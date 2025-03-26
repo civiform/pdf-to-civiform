@@ -11,6 +11,7 @@ from convert_to_civiform_json import convert_to_civiform_json
 from LLM_prompts import LLMPrompts
 from io import StringIO
 import traceback # Import the traceback module
+import sys
 
 # This script extracts text from uploaded PDF files, uses Gemini LLM to
 # convert the text into structured JSON representing a form, formats the JSON
@@ -21,7 +22,7 @@ import traceback # Import the traceback module
 # install the latest geminiAPI package: pip install -U -q "google-genai"
 
 # run this script from command line as: python pdf_to_civiform.py
-# output files are stored in ~/pdf-to-civiform/
+# output files are stored in ~/pdf_to_civiform/
 
 # Configure logging
 logging.basicConfig(
@@ -36,20 +37,27 @@ logging.getLogger().addHandler(log_handler)
 
 app = Flask(__name__)
 
-work_dir = os.path.expanduser("~/pdf-to-civiform/")
-default_upload_dir = os.path.join(
-    work_dir, 'uploads')  # Define the default directory
-os.makedirs(default_upload_dir, exist_ok=True)
-logging.info("Working directory: %s", work_dir)
-logging.info(f"Default upload directory: {default_upload_dir}")
+try:
+    work_dir = os.path.expanduser("~/pdf_to_civiform")
+    if not os.path.isabs(work_dir): # Ensure we got an absolute path
+        raise ValueError("Could not resolve home directory path.")
 
-# set python cache dir
-default_python_cache_path = os.path.join(work_dir, 'python_cache')
-if 'PYTHONPYCACHEPREFIX' not in os.environ:
-    os.environ['PYTHONPYCACHEPREFIX'] = default_python_cache_path
+    default_upload_dir = os.path.join(work_dir, 'uploads')
+    output_json_dir = os.path.join(work_dir, "output-json")
 
-logging.info(
-    f"PYTHONPYCACHEPREFIX  set to: {os.environ['PYTHONPYCACHEPREFIX']}")
+    os.makedirs(default_upload_dir, exist_ok=True)
+    os.makedirs(output_json_dir, exist_ok=True)
+
+    logging.info(f"Using base directory: {work_dir}")
+    logging.info(f"upload directory: {default_upload_dir}")
+    logging.info(f"json output directory: {output_json_dir}")
+
+except (ValueError, OSError) as e:
+    # Catch errors from expanduser failure or makedirs failure
+    logging.error(f"Failed to setup required directories based on '~/pdf_to_civiform'. " \
+          f"Check path and permissions. Error: {e}", file=sys.stderr)
+    sys.exit(f"Startup failed: Directory setup error.")
+
 
 
 def initialize_gemini_model(
@@ -108,11 +116,11 @@ def process_pdf_text_with_llm(client, model_name, file, base_name):
         response = client.models.generate_content(
             model=model_name, contents=[input_file, prompt])
         response_text = response.text.strip("`").lstrip(
-            "json")  # Remove ``` and json if present
+            "json")  # Remove ``` and "json" if present
 
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
             save_response_to_file(
-                response_text, base_name, f"pdf-extract-{model_name}", work_dir)
+                response_text, base_name, f"pdf-extract-{model_name}", output_json_dir)
 
         return response_text, None  # Return response and None for error
 
@@ -133,11 +141,11 @@ def post_processing_llm(client, model_name, text, base_name):
         response = client.models.generate_content(
             model=model_name, contents=[prompt_post_processing_json])
         response = response.text.strip("`").lstrip(
-            "json")  # Remove ``` and json if present
+            "json")  # Remove ``` and "json" if present
 
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
             save_response_to_file(
-                response, base_name, f"post-processed-{model_name}", work_dir)
+                response, base_name, f"post-processed-{model_name}", output_json_dir)
 
         return response  # Return the processed text
 
@@ -196,28 +204,34 @@ def format_json_single_line_fields(json_string: str) -> str:
         ) from e  # Raise a ValueError
 
 
-def save_response_to_file(response, base_name, output_suffix, work_dir):
+def save_response_to_file(response, base_name, output_suffix, output_directory): 
     """
-    Saves a given response string to a file.
+    Saves a given response string to a file inside the specified output directory.
+    Assumes the directory already exists.
 
     Args:
         response (str): The string to be saved to the file.
         base_name (str): The base name of the file.
         output_suffix (str): The suffix to append to the filename.
-        work_dir (str): The working directory where the file will be saved.
+        output_directory (str): The absolute path to the directory where the file should be saved.
     """
     try:
+        # Construct the path using the provided output directory
         output_file_full = os.path.join(
-            work_dir, f"{base_name}-{output_suffix}.json")
+            output_directory, f"{base_name}-{output_suffix}.json") # Use output_directory parameter
 
-        # Remove "```" from both ends and "json" from the start
-        response = re.sub(r'^```\s*|\s*```$|\s*json\s*', '', response)
+        # Clean the response
+        cleaned_response = re.sub(r'^\s*```(?:json)?\s*|\s*```\s*$', '', response, flags=re.IGNORECASE)
 
+        # Save the file
         with open(output_file_full, "w", encoding="utf-8") as f:
-            f.write(response)
+            f.write(cleaned_response)
+
         logging.info(f"{output_suffix} Response saved to: {output_file_full}")
+
     except Exception as e:
-        logging.error(f"Error saving response to file: {e}")
+        logging.error(f"Error saving response to file '{output_file_full}': {e}")
+        logging.error(traceback.format_exc())
 
 
 def process_file(file_full, model_name, client):
@@ -253,7 +267,7 @@ def process_file(file_full, model_name, client):
         logging.info(f"Formating json  .... ")
         formated_json = format_json_single_line_fields(structured_json)
         save_response_to_file(
-            formated_json, base_name, f"formated-{model_name}", work_dir)
+            formated_json, base_name, f"formated-{model_name}", output_json_dir)
 
         post_processed_json = post_processing_llm(
             client, model_name, formated_json, base_name)
@@ -265,12 +279,12 @@ def process_file(file_full, model_name, client):
             post_processed_json)
         save_response_to_file(
             formated_post_processed_json, f"{base_name}-post-processed",
-            f"formated-{model_name}", work_dir)
+            f"formated-{model_name}", output_json_dir)
 
         parsed_json = json.loads(formated_post_processed_json)
         civiform_json = convert_to_civiform_json(parsed_json)
         save_response_to_file(
-            civiform_json, base_name, f"civiform-{model_name}", work_dir)
+            civiform_json, base_name, f"civiform-{model_name}", output_json_dir)
         logging.info(f"Done processing file: {file_full}")
 
         return civiform_json

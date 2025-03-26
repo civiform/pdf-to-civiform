@@ -1,0 +1,336 @@
+Abilene, TX: https://abilenetx.gov
+Akron, OH: https://www.akronohio.gov
+Albany, NY: https://www.albanyny.gov
+Albuquerque, NM: https://www.cabq.gov
+Alexandria, VA: https://www.alexandriava.gov
+Allen, TX: https://www.cityofallen.org
+Allentown, PA: https://www.allentownpa.gov
+Amarillo, TX: https://www.amarillo.gov
+Anaheim, CA: https://www.anaheim.net
+Anchorage, AK: http://anchorageak.gov
+Ann Arbor, MI: https://www.a2gov.org
+Antioch, CA: https://www.antiochca.gov
+Arlington, TX: https://www.arlingtontx.gov
+Arvada, CO: https://www.arvadaco.gov
+Athens, GA: https://www.accgov.com
+Atlanta, GA: https://www.atlantaga.gov
+Augusta, GA: https://www.augustaga.gov
+Aurora, CO: https://www.auroragov.org
+Aurora, IL: https://www.aurora-il.org
+Austin, TX: https://www.austintexas.gov
+Bakersfield, CA: https://www.bakersfieldcity.us
+Baltimore, MD: https://www.baltimorecity.gov
+Baton Rouge, LA: https://www.brla.gov
+Beaumont, TX: https://www.beaumonttexas.gov
+Bellevue, WA: https://bellevuewa.gov
+Bend, OR: https://www.bendoregon.gov
+Berkeley, CA: https://berkeleyca.gov
+Billings, MT: https://www.billingsmt.gov
+Birmingham, AL: https://www.birminghamal.gov
+Boise, ID: https://www.usgs.gov
+Boston, MA: https://www.boston.gov
+Boulder, CO: https://bouldercolorado.gov
+Bridgeport, CT: https://www.bridgeportct.gov
+Brockton, MA: https://brockton.ma.us
+Broken Arrow, OK: https://www.brokenarrowok.gov
+Brownsville, TX: https://www.brownsvilletx.gov
+Buckeye, AZ: https://www.buckeyeaz.gov
+Buffalo, NY: https://www.buffalony.gov
+Burbank, CA: https://www.burbankca.gov
+Cambridge, MA: https://www.cambridgema.gov
+Cape Coral, FL: https://www.capecoral.gov
+Carlsbad, CA: https://www.carlsbadca.gov
+Carmel, IN: https://www.carmel.in.gov
+Carrollton, TX: https://www.cityofcarrollton.com
+Cary, NC: https://www.carync.gov
+Cedar Rapids, IA: https://www.cedar-rapids.org
+Centennial, CO: https://www.centennialco.gov
+Chandler, AZ: https://www.chandleraz.gov
+Charleston, SC: https://www.charleston-sc.gov
+Charlotte, NC: https://www.charlottenc.gov
+Chattanooga, TN: https://chattanooga.gov
+Chesapeake, VA: https://www.cityofchesapeake.net
+Chicago, IL: https://www.chicago.gov
+Chico, CA: https://www.chicoca.gov
+Chula Vista, CA: https://www.chulavistaca.gov
+Cincinnati, OH: https://www.cincinnati-oh.gov
+Clarksville, TN: https://www.clarksvilletn.gov
+Clearwater, FL: https://www.myclearwater.com
+Cleveland, OH: https://www.clevelandohio.gov
+Clovis, CA: https://cityofclovis.com
+College Station, TX: https://www.cstx.gov
+Colorado Springs, CO: https://coloradosprings.gov
+Columbia, MO: https://www.como.gov
+Columbia, SC: https://columbiasc.gov
+Columbus, GA: https://www.columbusga.gov
+Columbus, OH: https://www.columbus.gov
+Concord, CA: https://cityofconcord.org
+Concord, NC: https://concordnc.gov
+Conroe, TX: https://www.cityofconroe.org
+Coral Springs, FL: https://www.coralsprings.gov
+Corona, CA: https://www.coronaca.gov
+Corpus Christi, TX: https://www.cctexas.com
+Costa Mesa, CA: https://www.costamesaca.gov
+Dallas, TX: https://dallas.gov
+Davenport, IA: https://davenportiowa.com
+Davie, FL: https://www.davie-fl.gov
+Dayton, OH: https://www.daytonohio.gov
+Dearborn, MI: http://dearborn.gov
+Denton, TX: http://www.dentontx.gov
+Denver, CO: https://www.denver.org
+Des Moines, IA: https://www.dsm.city
+Detroit, MI: https://detroitmi.gov
+Downey, CA: https://www.downeyca.org
+Durham, NC: https://www.durhamnc.gov
+Edinburg, TX: https://cityofedinburg.com
+Edison, NJ: https://www.edisonnj.gov
+El Cajon, CA: https://www.elcajon.gov
+El Monte, CA: https://www.ci.el-monte.ca.us
+El Paso, TX: https://www.elpasotexas.gov
+Elgin, IL: https://elginil.gov
+Elizabeth, NJ: https://www.elizabethnj.org
+Elk Grove, CA: https://www.elkgrovecity.org
+Escondido, CA: https://www.escondido.gov
+Eugene, OR: https://eugene-or.gov
+Evansville, IN: https://www.evansville.in.gov
+Everett, WA: https://www.everettwa.gov
+Fairfield, CA: https://www.fairfield.ca.gov
+Fargo, ND: https://fargond.gov
+Fayetteville, AR: https://www.fayetteville-ar.gov
+Fayetteville, NC: https://www.fayettevillenc.gov
+Fishers, IN: https://fishersin.gov
+Fontana, CA: https://www.fontanaca.gov
+Fort Collins, CO: https://www.fcgov.com
+Fort Lauderdale, FL: https://www.fortlauderdale.gov
+Fort Wayne, IN: https://www.cityoffortwayne.org
+Fort Worth, TX: https://www.fortworthtexas.gov
+Fremont, CA: https://www.fremont.gov
+Fresno, CA: https://www.fresno.gov
+Frisco, TX: https://www.friscotexas.gov
+Fullerton, CA: https://www.fortworthtexas.gov
+Gainesville, FL: https://www.gainesvillefl.gov
+Garden Grove, CA: https://ggcity.org
+Garland, TX: https://www.garlandtx.gov
+Gilbert, AZ: https://www.gilbertaz.gov
+Glendale, AZ: https://www.glendaleaz.com
+Glendale, CA: https://www.glendaleca.gov
+Goodyear, AZ: https://www.goodyearaz.gov
+Grand Prairie, TX: https://www.gptx.org
+Grand Rapids, MI: https://www.grandrapidsmi.gov
+Greeley, CO: https://greeleygov.com
+Green Bay, WI: https://greenbaywi.gov
+Greensboro, NC: https://www.greensboro-nc.gov
+Gresham, OR: https://www.greshamoregon.gov
+Hampton, VA: https://www.hampton.gov
+Hartford, CT: https://www.hartfordct.gov
+Hayward, CA: http://www.hayward-ca.gov
+Henderson, NV: http://hendersonnevada.gov
+Hesperia, CA: https://www.cityofhesperia.us
+Hialeah, FL: https://www.hialeahfl.gov
+High Point, NC: https://www.highpointnc.gov
+Hillsboro, OR: https://www.hillsboro-oregon.gov
+Hollywood, FL: https://www.hollywoodfl.org
+Honolulu, HI: https://www.honolulu.gov
+Houston, TX: https://www.houstontx.gov
+Huntington Beach, CA: https://engage.huntingtonbeachca.gov
+Huntsville, AL: https://www.huntsvilleal.gov
+Independence, MO: https://www.independencemo.gov
+Indianapolis, IN: https://www.indy.gov
+Inglewood, CA: https://www.cityofinglewood.org
+Irvine, CA: http://irvineca.gov
+Irving, TX: https://www.cityofirving.org
+Jackson, MS: https://www.jacksonms.gov
+Jacksonville, FL: https://www.jacksonville.gov
+Jersey City, NJ: https://www.jerseycitynj.gov
+Joliet, IL: https://www.joliet.gov
+Jurupa Valley, CA: https://www.jurupavalley.org
+Kansas City, KS: https://www.wycokck.org
+Kansas City, MO: https://www.kcmo.gov
+Kent, WA: https://www.kentwa.gov
+Killeen, TX: https://www.killeentexas.gov
+Knoxville, TN: https://www.knoxvilletn.gov
+Lafayette, LA: https://www.lafayettela.gov
+Lakeland, FL: https://www.lakelandgov.net
+Lakewood, CO: https://cityoflakewood.us
+Lakewood, NJ: https://www.lakewoodnj.gov
+Lancaster, CA: http://www.cityoflancasterca.gov
+Lansing, MI: https://www.lansingmi.gov
+Laredo, TX: https://www.cityoflaredo.com
+Las Cruces, NM: https://lascruces.gov
+Las Vegas, NV: https://www.lasvegasnevada.gov
+League City, TX: https://www.leaguecitytx.gov
+Lee's Summit, MO: https://cityofls.net
+Lewisville, TX: https://www.cityoflewisville.com
+Lexington, KY: https://www.lexingtonky.gov
+Lincoln, NE: https://www.lincoln.ne.gov
+Little Rock, AR: https://www.littlerock.gov
+Long Beach, CA: https://www.longbeach.gov
+Los Angeles, CA: https://lacity.gov
+Louisville, KY: https://louisvilleky.gov
+Lowell, MA: https://www.lowellma.gov
+Lubbock, TX: https://ci.lubbock.tx.us
+Lynn, MA: https://www.lynnma.gov
+Macon, GA: https://www.maconbibb.us
+Madison, WI: https://www.cityofmadison.com
+Manchester, NH: https://www.manchesternh.gov
+McAllen, TX: https://www.mcallen.net
+McKinney, TX: https://www.mckinneytexas.org
+Memphis, TN: https://www.memphistn.gov
+Menifee, CA: https://www.cityofmenifee.us
+Meridian, ID: https://meridiancity.org
+Mesa, AZ: https://www.mesaaz.gov
+Mesquite, TX: http://www.mesquitetx.gov
+Miami Gardens, FL: https://www.miamigardens-fl.gov
+Miami, FL: https://www.miami.gov
+Midland, TX: https://www.midlandtexas.gov
+Milwaukee, WI: https://city.milwaukee.gov
+Minneapolis, MN: https://www.minneapolismn.gov
+Miramar, FL: https://www.miramarfl.gov
+Mobile, AL: https://www.cityofmobile.org
+Modesto, CA: https://www.modestogov.com
+Montgomery, AL: https://www.montgomeryal.gov
+Moreno Valley, CA: https://moval.gov
+Murfreesboro, TN: https://www.murfreesborotn.gov
+Murrieta, CA: https://www.murrietaca.gov
+Nampa, ID: https://www.cityofnampa.us
+Naperville, IL: https://www.naperville.il.us
+Nashville, TN: https://www.nashville.gov
+New Bedford, MA: https://www.newbedford-ma.gov
+New Braunfels, TX: https://www.newbraunfels.gov
+New Haven, CT: https://www.newhavenct.gov
+New Orleans, LA: https://nola.gov
+New York, NY: https://www.nyc.gov
+Newark, NJ: https://www.newarknj.gov
+Newport News, VA: https://www.nnva.gov
+Norfolk, VA: https://www.norfolk.gov
+Norman, OK: https://www.normanok.gov
+North Charleston, SC: https://www.northcharleston.org
+North Las Vegas, NV: https://www.cityofnorthlasvegas.com
+Oakland, CA: https://www.oaklandca.gov
+Oceanside, CA: https://www.ci.oceanside.ca.us
+Odessa, TX: https://www.odessa-tx.gov
+Oklahoma City, OK: https://www.okc.gov
+Olathe, KS: https://www.olatheks.gov
+Omaha, NE: https://www.cityofomaha.org
+Ontario, CA: https://www.ontarioca.gov
+Orange, CA: https://www.cityoforange.org
+Orlando, FL: https://www.orlando.gov
+Overland Park, KS: https://www.opkansas.org
+Oxnard, CA: https://www.oxnard.gov
+Palm Bay, FL: https://www.palmbayflorida.org
+Palm Coast, FL: https://www.palmcoast.gov
+Palmdale, CA: https://www.cityofpalmdaleca.gov
+Pasadena, CA: https://www.cityofpasadena.net/
+Pasadena, TX: https://www.pasadenatx.gov
+Paterson, NJ: https://www.patersonnj.gov
+Pearland, TX: https://www.pearlandtx.gov
+Pembroke Pines, FL: https://www.ppines.com
+Peoria, AZ: https://www.peoriaaz.gov
+Peoria, IL: https://www.peoriagov.org
+Philadelphia, PA: https://www.phila.gov
+Phoenix, AZ: https://www.phoenix.gov
+Pittsburgh, PA: https://www.pittsburghpa.gov
+Plano, TX: https://www.plano.gov
+Pomona, CA: https://www.pomonaca.gov
+Pompano Beach, FL: https://www.pompanobeachfl.gov
+Port St. Lucie, FL: https://www.cityofpsl.com
+Portland, OR: https://www.portland.gov
+Providence, RI: https://www.providenceri.gov
+Provo, UT: https://www.provo.org
+Pueblo, CO: https://www.pueblo.us
+Quincy, MA: https://www.quincyma.gov
+Raleigh, NC: https://raleighnc.gov
+Rancho Cucamonga, CA: https://www.cityofrc.us
+Reno, NV: https://www.reno.gov
+Renton, WA: https://rentonwa.gov
+Rialto, CA: https://www.rialtoca.gov
+Richardson, TX: https://www.cor.net
+Richmond, CA: https://www.ci.richmond.ca.us
+Richmond, VA: https://www.rva.gov
+Rio Rancho, NM: https://rrnm.gov
+Riverside, CA: https://riversideca.gov
+Rochester, MN: https://www.rochestermn.gov
+Rochester, NY: https://www.cityofrochester.gov
+Rockford, IL: https://www.rockfordil.gov
+Roseville, CA: https://www.roseville.ca.us
+Round Rock, TX: https://www.roundrocktexas.gov
+Sacramento, CA: https://www.cityofsacramento.gov
+Saint Paul, MN: https://www.stpaul.gov
+Salem, OR: https://www.salemma.gov
+Salinas, CA: http://salinas.gov
+Salt Lake City, UT: https://www.slc.gov
+San Antonio, TX: https://www.sa.gov
+San Bernardino, CA: https://www.sbcity.org
+San Diego, CA: https://www.sandiego.org
+San Francisco, CA: https://www.sf.gov
+San Jose, CA: https://www.sanjoseca.gov
+San Mateo, CA: https://www.cityofsanmateo.org
+Sandy Springs, GA: https://www.sandyspringsga.gov
+Santa Ana, CA: https://www.santa-ana.org
+Santa Clara, CA: https://www.santaclaraca.gov
+Santa Clarita, CA: https://santaclarita.gov
+Santa Maria, CA: https://www.cityofsantamaria.org
+Santa Rosa, CA: https://www.srcity.org
+Savannah, GA: https://www.savannahga.gov
+Scottsdale, AZ: https://www.scottsdaleaz.gov
+Seattle, WA: https://www.seattle.gov
+Shreveport, LA: https://www.shreveportla.gov
+Simi Valley, CA: https://www.simivalley.org
+Sioux Falls, SD: https://www.siouxfalls.gov
+South Bend, IN: https://southbendin.gov
+South Fulton, GA: https://www.cityofsouthfultonga.gov
+Sparks, NV: https://www.cityofsparks.us
+Spokane Valley, WA: https://www.spokanevalleywa.gov
+Spokane, WA: https://my.spokanecity.org
+Springfield, IL: https://www.springfield.il.us
+Springfield, MA: https://www.springfield-ma.gov
+Springfield, MO: https://www.springfieldmo.gov
+St. George, UT: https://sgcityutah.gov
+St. Louis, MO: https://www.stlouis-mo.gov
+St. Petersburg, FL: https://www.stpete.org
+Stamford, CT: https://www.stamfordct.gov
+Sterling Heights, MI: https://www.sterlingheights.gov
+Stockton, CA: https://www.stocktonca.gov
+Suffolk, VA: https://www.suffolkva.us
+Sugar Land, TX: https://www.sugarlandtx.gov
+Sunnyvale, CA: https://www.sunnyvale.ca.gov
+Surprise, AZ: https://surpriseaz.gov
+Syracuse, NY: https://www.syr.gov
+Tacoma, WA: https://www.cityoftacoma.org
+Tallahassee, FL: https://www.tallahassee.com
+Tampa, FL: https://www.tampa.gov
+Temecula, CA: https://temeculaca.gov
+Tempe, AZ: https://www.tempe.gov
+Thornton, CO: https://www.thorntonco.gov 
+Thousand Oaks, CA: https://toaks.gov
+Toledo, OH: https://toledo.oh.gov
+Topeka, KS: https://www.topeka.org
+Torrance, CA: https://www.torranceca.gov
+Tucson, AZ: https://www.tucsonaz.gov
+Tulsa, OK: https://www.cityoftulsa.org
+Tuscaloosa, AL: https://www.tuscaloosa.com
+Tyler, TX: https://www.cityoftyler.org
+Vacaville, CA: https://www.cityofvacaville.gov
+Vallejo, CA: https://www.vallejo.gov
+Vancouver, WA: https://www.cityofvancouver.us
+Ventura, CA: https://www.cityofventura.ca.gov
+Victorville, CA: https://www.victorvilleca.gov
+Virginia Beach, VA: https://virginiabeach.gov
+Visalia, CA: https://www.visalia.gov
+Waco, TX: https://www.waco-texas.com
+Warren, MI: https://www.cityofwarren.org
+Washington, DC: https://dc.gov
+Waterbury, CT: https://www.waterburyct.org
+West Covina, CA: https://www.westcovina.org
+West Jordan, UT: https://www.westjordan.utah.gov
+West Palm Beach, FL: https://www.wpb.org
+West Valley City, UT: https://www.wvc-ut.gov
+Westminster, CO: https://www.westminsterco.gov
+Wichita Falls, TX: https://www.wichitafallstx.gov
+Wichita, KS: https://www.wichita.gov
+Wilmington, NC: https://www.wilmingtonnc.gov
+Winston-Salem, NC: https://www.cityofws.org
+Woodbridge, NJ: https://www.twp.woodbridge.nj.us
+Worcester, MA: https://www.worcesterma.gov
+Yonkers, NY: https://www.yonkersny.gov
+Yuma, AZ: https://www.yumaaz.gov

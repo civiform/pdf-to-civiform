@@ -1,0 +1,66 @@
+Aurora: 
+Beadle: https://www.beadlesd.org/
+Bennett: 
+Bon Homme: 
+Brookings: http://www.brookingscountysd.gov/
+Brown: http://www.brown.sd.us/
+Brule: 
+Buffalo: https://buffalo.sdcounties.org/
+Butte: https://www.buttesd.org/
+Campbell: 
+Charles Mix: https://charlesmixcounty.gov/
+Clark: https://clark.sdcounties.org/
+Clay: http://www.claycountysd.org/
+Codington: https://www.codington.org/
+Corson: https://corsoncountysd.gov/
+Custer: https://www.custercountysd.com/
+Davison: http://www.davisoncounty.org/
+Day: https://day.sdcounties.org/
+Deuel: https://www.deuelcountysd.com/
+Dewey: 
+Douglas: https://douglas.sdcounties.org/
+Edmunds: https://edmunds.sdcounties.org/
+Fall River: http://fallriver.sdcounties.org
+Faulk: https://www.faulktonsd.com/
+Grant: https://grantcounty.sd.gov/stateofsd/
+Gregory: https://gregory.sdcounties.org/
+Haakon: 
+Hamlin: https://hamlinco.us/
+Hand: https://hand.sdcounties.org/
+Hanson: https://www.hansoncounty.net/
+Harding: http://www.hardingsd.net/
+Hughes: https://hughescounty.org/
+Hutchinson: https://www.hutchinsoncountysd.org/
+Hyde: http://hydeco.org/
+Jackson: 
+Jerauld: https://jerauldcountysd.com/
+Jones: https://jones.sdcounties.org/
+Kingsbury: https://kingsburycountysd.org/
+Lake: http://www.lake.sd.gov/
+Lawrence: http://www.lawrence.sd.us/
+Lincoln: http://www.lincolncountysd.org/
+Lyman: http://www.lymancounty.org/
+Marshall: http://marshall.sdcounties.org/
+McCook: https://mccookcountysd.com/
+McPherson: https://mcpherson.sdcounties.org/
+Meade: http://www.meadecounty.org/
+Mellette: https://mellettecounty.org/
+Miner: https://minercountysd.org/
+Minnehaha: http://www.minnehahacounty.org/
+Moody: https://www.moodycounty.net/
+Oglala Lakota: http://oglalalakota.sdcounties.org
+Pennington: https://pennco.org/
+Perkins: https://www.perkinscounty.org/
+Potter: https://potter.southdakotadirectors.com/
+Roberts: http://roberts.sdcounties.org/
+Sanborn: 
+Spink: https://spinkcounty-sd.org/
+Stanley: https://www.stanleycounty.org/
+Sully: https://sullycounty.net/
+Todd: 
+Tripp: https://trippcounty.us/
+Turner: https://turner.sdcounties.org/
+Union: https://unioncountysd.org/
+Walworth: https://walworthco.org/
+Yankton: http://www.co.yankton.sd.us/
+Ziebach: https://ziebachcounty.org/

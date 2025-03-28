@@ -1,0 +1,83 @@
+#! /usr/bin/env bash
+
+# DOC: Run the pdf-to-civiform app locally using Docker.
+
+set -euo pipefail # Exit on error, undefined variable, pipe failures
+
+# --- Configuration ---
+readonly IMAGE="pdf-to-civiform-dev" # Simple local image name component
+readonly TAG="latest"
+readonly FULL_IMAGE_NAME="${IMAGE}:${TAG}" # Image tag to run
+readonly CONTAINER_NAME="pdf-to-civiform-local" # Name for the running container
+readonly PORT_MAPPING="7000:7000" # Map host port 7000 to container port 7000
+
+# --- Cleanup Function ---
+# This function is called when the script exits or receives SIGINT (Ctrl+C)
+cleanup() {
+  # Adding >&2 redirects echo output to stderr, preventing it from interfering
+  # with potential script output redirection. Good practice for informational messages.
+  echo "" >&2 # Newline after potential Ctrl+C output
+  echo "Interrupt received. Cleaning up..." >&2
+  echo "Stopping container ${CONTAINER_NAME}..." >&2
+  # Stop the container, ignoring errors if it's already stopped (|| true)
+  docker stop "${CONTAINER_NAME}" > /dev/null || true
+  echo "Removing container ${CONTAINER_NAME}..." >&2
+  # Remove the container, ignoring errors if it's already removed (|| true)
+  docker rm "${CONTAINER_NAME}" > /dev/null || true
+  echo "Cleanup finished." >&2
+  # Exit with status 0 to indicate successful cleanup
+  exit 0
+}
+
+# Trap the SIGINT signal (Ctrl+C) and the EXIT signal (script finishing normally or abnormally)
+# When trapped, execute the 'cleanup' function.
+trap cleanup SIGINT EXIT
+
+# --- Check if image exists ---
+echo "Checking if image ${FULL_IMAGE_NAME} exists..."
+# Inspect the image; redirect stdout and stderr to /dev/null. If the command fails (exit code != 0), the image doesn't exist.
+if ! docker image inspect "${FULL_IMAGE_NAME}" > /dev/null 2>&1; then
+  echo "Error: Image ${FULL_IMAGE_NAME} not found locally." >&2
+  echo "Please build the image first by running from project root: ./bin/build-dev" >&2
+  exit 1 # Exit script with an error status
+fi
+echo "Image found."
+
+# --- Stop and Remove Existing Container ---
+echo "Checking for existing container named ${CONTAINER_NAME}..."
+# List containers (including stopped ones -a) and filter by name.
+# Use grep -q for quiet mode (no output), just exit status.
+# Use ^...$ to match the exact name.
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+  echo "Stopping existing container ${CONTAINER_NAME}..."
+  docker stop "${CONTAINER_NAME}" > /dev/null || true
+  echo "Removing existing container ${CONTAINER_NAME}..."
+  docker rm "${CONTAINER_NAME}" > /dev/null || true
+fi
+
+# --- Run New Container ---
+echo "Starting container ${CONTAINER_NAME} from image ${FULL_IMAGE_NAME}..."
+# Run the container:
+# -d: Detached mode (runs in background)
+# -p: Publish ports (host:container)
+# --name: Assign a name to the container
+# Last argument is the image name to run
+docker run \
+  -d \
+  -p "${PORT_MAPPING}" \
+  --name "${CONTAINER_NAME}" \
+  "${FULL_IMAGE_NAME}"
+
+# Brief pause to allow the container's web server to initialize
+sleep 3
+
+# --- Follow Logs ---
+echo "Container started successfully. Access at http://localhost:7000 (or forwarded port)"
+echo "Following logs for ${CONTAINER_NAME} (Press Ctrl+C to stop and cleanup)..."
+# Fetch and follow logs (-f) from the specified container.
+# This command will block until interrupted (e.g., by Ctrl+C).
+docker logs -f "${CONTAINER_NAME}"
+
+# When 'docker logs -f' is interrupted (Ctrl+C), the script receives SIGINT.
+# The 'trap' command catches this and executes the 'cleanup' function.
+# The 'cleanup' function stops/removes the container and exits the script gracefully.

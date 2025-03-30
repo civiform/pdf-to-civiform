@@ -1,5 +1,6 @@
 from google import genai
 from google.genai import types
+import fitz  # PyMuPDF
 from pathlib import Path
 import json
 from flask import Flask, request, jsonify, render_template
@@ -11,6 +12,8 @@ from convert_to_civiform_json import convert_to_civiform_json
 from LLM_prompts import LLMPrompts
 from io import StringIO
 import traceback # Import the traceback module
+
+MAX_OUTPUT_TOKEN=8192
 
 # This script extracts text from uploaded PDF files, uses Gemini LLM to
 # convert the text into structured JSON representing a form, formats the JSON
@@ -51,6 +54,32 @@ if 'PYTHONPYCACHEPREFIX' not in os.environ:
 logging.info(
     f"PYTHONPYCACHEPREFIX  set to: {os.environ['PYTHONPYCACHEPREFIX']}")
 
+def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    new_doc = fitz.open()
+
+    for page_num in range(start_page, end_page):
+        if page_num < len(doc):
+            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+
+    return new_doc.write()
+
+def fix_malformed_json(json_str, client, model_name):
+    try:
+        json.loads(json_str)
+        return json_str.strip(), False
+    except json.JSONDecodeError as e:
+        logging.info(f"Error parsing JSON: {e}")
+        # Attempt to fix by adding missing closing brackets/braces
+        fix_malformed_json = LLMPrompts.fix_malformed_json_prompt(json_str)
+        fixed_json_str = client.models.generate_content(model=model_name, contents=[fix_malformed_json])
+        fixed_json_str = fixed_json_str.text.strip("`").lstrip("json")
+        try:
+            json.loads(fixed_json_str)
+            return fixed_json_str.strip(), True
+        except json.JSONDecodeError:
+            print("Failed to auto-fix JSON. Manual review needed.")
+            return None
 
 def initialize_gemini_model(
     model_name="gemini-2.0-flash",
@@ -105,16 +134,41 @@ def process_pdf_text_with_llm(client, model_name, file, base_name):
             mime_type='application/pdf',
         )
         logging.debug(f"Sending PDF to LLM...")
-        response = client.models.generate_content(
-            model=model_name, contents=[input_file, prompt])
+        response = client.models.generate_content(model=model_name, contents=[input_file, prompt])
         response_text = response.text.strip("`").lstrip(
             "json")  # Remove ``` and json if present
 
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            save_response_to_file(
-                response_text, base_name, f"pdf-extract-{model_name}", work_dir)
+          save_response_to_file(response_text, base_name, f"pdf-extract-{model_name}", work_dir)
 
-        return response_text, None  # Return response and None for error
+        fixed_text_response, needs_fix = fix_malformed_json(response_text, client, model_name)
+        save_response_to_file(fixed_text_response, base_name, f"pdf-extract-fixed-{model_name}", work_dir)
+
+        responses = []
+        if needs_fix != True:
+          responses.append(fixed_text_response)
+        else:
+            while needs_fix:
+                if fixed_text_response is not None:
+                    try:
+                        fixed_json = json.loads(fixed_text_response.strip())
+                        responses.append(fixed_json)
+                        # TODO Identify the section that is correctly parsed.
+                        get_remaining_prompt = LLM_prompts.get_remaining_pdf_prompt(fixed_json)
+                        last_parsed_page = client.models.generate_content(model=model_name, contents=[input_file, get_remaining_prompt])
+                        last_parsed_page_text = response.text.strip("`")
+                        logging.info(f"last parsed section... {last_parsed_page_text}")
+                        # TODO Remaining section must be processed again
+                    except json.JSONDecodeError:
+                        logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+                else:
+                    logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+
+        full_response = json.dumps(responses, ensure_ascii=False, indent=4)
+        save_response_to_file(full_response, base_name, f"pdf-extract-full-{model_name}", work_dir)
+
+
+        return full_response, None  # Return response and None for error
 
     except Exception as e:
         error_details = f"process_pdf_text_with_llm: {e}"

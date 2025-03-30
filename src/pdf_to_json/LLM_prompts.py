@@ -69,10 +69,54 @@ class LLMPrompts:
 
         Output JSON structure should match this example:
         {json.dumps(JSON_EXAMPLE, indent=4)}
-        
-        Output only JSON, no explanations.
         """
         return prompt
+
+    @staticmethod
+    def fix_malformed_json_prompt(text):
+            """Prompt for converting PDF text to intermediary JSON."""
+            prompt = f"""
+                You are an expert in government forms.  Process the following malformed extracted json from a government form to the correct output format:
+                {text}
+                Instructions:
+                You will receive a JSON string that may be truncated, improperly formatted, or missing closing brackets/braces.
+                Your job is to repair the JSON while preserving all original data.
+                Ensure that:
+                Every opening bracket '{' or [ has a corresponding closing bracket '}' or ].
+                No JSON keys or values are lost.
+                The output remains structurally valid and well-formed.
+                Do NOT modify field values or alter key names. Only fix structural issues.
+               **Identify and remove any incomplete JSON structures where a key exists but the value is clearly truncated or missing (e.g., `"type": "`).**
+
+               **Example of Incomplete Structure Removal:**
+                   If you encounter the following within the malformed JSON:
+                   ```json
+                   {{
+                       "title": "Some Title",
+                       "fields": [
+                           {{
+                               "field": "value",
+                               "another_field": "va
+                   ```
+                   You should remove the first incomplete field object, resulting in:
+                   ```json
+                   {{
+                       "title": "Some Title",
+                       "fields": [
+                           {{
+                               "field": "value"
+                           }}
+                       ]
+                   }}
+                   ```
+
+               - After removing incomplete structures, ensure all remaining open brackets and braces are properly closed. Do not attempt to guess or add missing fields or values beyond closing existing structures.
+
+               **Output Rules:**
+                - Output ONLY the corrected JSON—do NOT add explanations or comments.
+                - Ensure the JSON can be parsed without errors in standard JSON libraries.
+                """
+            return prompt
 
     @staticmethod
     def post_process_json_prompt(text):
@@ -97,5 +141,16 @@ class LLMPrompts:
         {json.dumps(JSON_EXAMPLE, indent=4)}
 
         Output only JSON, no explanations.
+        """
+        return prompt
+
+    @staticmethod
+    def get_remaining_pdf_prompt(text):
+        prompt = f"""
+        You are an expert in government forms.  Process the following extracted json from a government form to be easier to use:
+
+        {text}
+
+         Identify the last successfully parsed section and its corresponding page number within the provided JSON.
         """
         return prompt

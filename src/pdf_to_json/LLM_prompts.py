@@ -56,7 +56,7 @@ class LLMPrompts:
         make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.
         2. **Currency**: Currency values with decimal separators (e.g., income, debts).
-        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique.
+        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option.
         4. **Date**: Captures dates (e.g., birth date, graduation date, month, year etc).
         5. **Email**: email address. Please collate domain and username if asked separately.
         6. **File Upload**: File attachments (e.g., PDFs, images)

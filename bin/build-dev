@@ -16,7 +16,7 @@ readonly PROJECT_ROOT="$(cd .. && pwd)" # Go up one level to get project root
 cd "${OLDPWD}" # Go back to original directory
 
 # --- Configuration ---
-readonly DEFAULT_NAMESPACE="pdf-to-civiform" # Default local namespace
+readonly DEFAULT_NAMESPACE="civiform"
 readonly NAMESPACE="${NAMESPACE:=${DEFAULT_NAMESPACE}}"
 readonly IMAGE="pdf-to-civiform-dev" # Image name component
 readonly TAG="latest"                # Development tag

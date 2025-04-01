@@ -1,0 +1,40 @@
+#! /usr/bin/env bash
+
+# DOC: Stop and remove the local pdf-to-civiform development container
+# DOC: started by run-dev.
+
+set -euo pipefail # Exit on error, undefined variable, pipe failures
+
+# --- Configuration ---
+# This MUST match the CONTAINER_NAME used in the run-dev script
+readonly CONTAINER_NAME="pdf-to-civiform-local"
+
+# --- Check and Stop/Remove ---
+echo "Attempting to stop and remove container named '${CONTAINER_NAME}'..."
+
+# Check if the container exists (running or stopped) using docker ps -a
+# Filter by exact name anchored with ^ and $
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+  echo "Found container '${CONTAINER_NAME}'."
+
+  # Check if it's currently running using docker ps (no -a)
+  if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+      echo "Stopping running container '${CONTAINER_NAME}'..."
+      # Stop the container, redirect output, ignore errors if already stopped (|| true)
+      docker stop "${CONTAINER_NAME}" > /dev/null || true
+      echo "Container stopped."
+  else
+      echo "Container '${CONTAINER_NAME}' was not running."
+  fi
+
+  # Remove the container (it definitely exists at this point, either stopped or just stopped)
+  echo "Removing container '${CONTAINER_NAME}'..."
+  # Remove the container, redirect output, ignore errors if already removed (shouldn't happen here)
+  docker rm "${CONTAINER_NAME}" > /dev/null || true
+  echo "Container '${CONTAINER_NAME}' removed."
+else
+  # If the container wasn't found by 'docker ps -a'
+  echo "Container '${CONTAINER_NAME}' not found."
+fi
+
+echo "Stop script finished."

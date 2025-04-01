@@ -1,5 +1,5 @@
 # Dockerfile (~/pdf-to-civiform/src/pdf_to_json/Dockerfile)
-FROM python:3.10-slim-buster
+FROM python:3.13-slim-bookworm
 
 ARG USER_NAME=cf-user
 ARG GROUP_NAME=cf-group

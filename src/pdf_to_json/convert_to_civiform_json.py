@@ -297,7 +297,7 @@ def handle_repeating_section(section, question_id, block_id, output):
         repeated_block["questionDefinitions"].append(
             {
                 "id": question_id,
-                "optional": False,
+                "optional": True,
                 "addressCorrectionEnabled": False
             })
         question_id += 1
@@ -383,7 +383,7 @@ def convert_to_civiform_json(unprocessed_input_json):
                                     "translations":
                                         {
                                             "en_US":
-                                                "program-applicationSteps TO-BE-EDITE"
+                                                "program-applicationSteps TO-BE-EDITED"
                                         },
                                     "isRequired": True
                                 },
@@ -451,7 +451,7 @@ def convert_to_civiform_json(unprocessed_input_json):
                 block["questionDefinitions"].append(
                     {
                         "id": question_id,
-                        "optional": False,
+                        "optional": True,
                         "addressCorrectionEnabled": False
                     })
                 question_id += 1

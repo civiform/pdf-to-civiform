@@ -3,70 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF Form to CiviForm JSON</title>
-    <style>
-      #output, #directoryOutput { /* Apply styles to both output areas */
-        width: 95%;
-        height: 200px;
-        border: 1px solid #ccc;
-        padding: 10px;
-        font-family: monospace;
-        white-space: pre-wrap;
-        overflow: auto;
-        resize: both;
-        word-wrap: break-word;
-      }
-
-      .form-group {
-        margin-bottom: 10px;
-      }
-
-      .inline-form-group {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-
-      .inline-form-group label {
-        margin-right: 10px;
-      }
-
-      .inline-form-group input[type='text'] {
-        margin-right: 20px;
-        /* Increased margin */
-      }
-
-      /* Style all buttons to look like the default file input */
-      button {
-        border: 1px solid #ccc;
-        /* Light gray border */
-        background-color: #eee;
-        /* Light gray background */
-        color: #333;
-        /* Dark gray text */
-        padding: 5px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-right: 10px;
-        font-family: inherit;
-        /* Use the default font */
-        font-size: inherit;
-        /* Use the default font size */
-      }
-
-      .section-spacer {
-        margin-top: 50px;
-      }
-
-      .file-input-container {
-        display: flex;
-        align-items: center;
-      }
-
-      .output-container {
-        margin-bottom: 20px;
-      }
-    </style>
+    <title>Convert PDFs to CiviForms</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
     <script>
       async function uploadFile(event) {
         event.preventDefault()
@@ -260,59 +199,24 @@
   </head>
 
   <body>
-    <h1>PDF Form to CiviForm JSON</h1>
-
-    <p class="description">
-      Convert PDF forms to CiviForm JSON. Enter a server-side directory path for
-      multiple files or select a single PDF.
-    </p>
-
-    <p>
-      <strong>Instructions:</strong>
-    </p>
-    <ol>
-      <li>
-        <strong>Single File Processing:</strong>
-        <ul>
-          <li>
-            To process a single PDF, select it using the file selection button.
-            Click "Convert" (for a single file) to generate the CiviForm JSON
-            output.
-          </li>
-        </ul>
-      </li>
-      <li>
-        <strong>Directory Processing:</strong>
-        <ul>
-          <li>
-            Enter the server directory path (Default: `~/pdf_forms`) where your
-            PDF files are located. Click "Process Directory" (for multiple files
-            on the server) to generate the CiviForm JSON output.
-          </li>
-        </ul>
-      </li>
-      <li>
-        Copy the CiviForm JSON output and import it to CiviForm using the
-        <a href="https://docs.civiform.us/user-manual/civiform-admin-guide/program-migration#importing-a-program">"Import program" flow</a>.
-        </li>
-    </ol>
+    <h1>Convert PDFs to CiviForms</h1>
 
     <div class="inline-form-group">
       <div class="form-group">
-        <label for="LLMModelSelect">LLM Model:</label>
+        <label for="LLMModelSelect">Gemini Model:</label>
         <select id="LLMModelSelect">
+          <option value="gemini-2.0-pro-exp">gemini-2.0-pro-exp</option>
           <option value="gemini-2.0-flash">gemini-2.0-flash</option>
           <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
-          <option value="gemini-2.0-pro-exp">gemini-2.0-pro-exp</option>
           <option value="gemini-2.0-flash-thinking">
             gemini-2.0-flash-thinking
           </option>
           <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
         </select>
-      </div>
+      </div> 
       <div class="form-group">
         <label for="geminiApiKeyInput">Gemini API Key:</label>
-        <input type="text" id="geminiApiKeyInput" placeholder="Enter API Key or leave blank to use file" size="40">
+        <input type="text" id="geminiApiKeyInput" placeholder="Leave blank to use ~/google_api_key" size="40">
       </div>
       <div class="form-group">
         <label for="logLevelSelect">Log Level:</label>
@@ -322,26 +226,24 @@
         </select>
       </div>
     </div>
+<hr>
+<h2>Convert one PDF:</h2>
 
-    <h2>Single File:</h2>
     <form onsubmit="uploadFile(event)" class="form-group">
-      <input type="file" id="pdfFile" accept="application/pdf" required />
+    <input type="file" id="pdfFile" accept="application/pdf" required />
       <button type="submit">Convert a single PDF file</button>
     </form>
 
     <div class="output-container">
-      <h3 class="section-spacer">
-        Output CiviForm JSON :
-      </h3>
-      <button onclick="copyToClipboard('output')">Copy to Clipboard</button>
       <textarea
         id="output"
-        placeholder="JSON output will appear here"
+        placeholder="CiviForm JSON output will appear here."
       ></textarea>
-      <div id="outputCharCount">Character Count: 0</div>
+      <!-- <div id="outputCharCount">Character Count: 0</div> -->
+      <button onclick="copyToClipboard('output')">Copy to Clipboard</button> and then import to CiviForm using <a href='https://docs.civiform.us/user-manual/civiform-admin-guide/program-migration#importing-a-program'>the Import Program flow.</a>
     </div>
-
-    <h2 class="section-spacer">Directory:</h2>
+<hr>
+    <h2 class="section-spacer">Convert multiple PDFs:</h2>
     <form onsubmit="uploadDirectory(event)" class="form-group">
       <div class="inline-form-group">
         <label for="directoryPath">Server Directory Path:</label>
@@ -357,11 +259,10 @@
     </form>
 
     <div class="output-container" id="directory-output-container">
-      <h3>Directory Processing Output:</h3>
       <textarea
         id="directoryOutput"
         class="output-area"
-        placeholder="Directory processing summary and details will appear here"
+        placeholder="Directory processing summary and details will appear here."
       ></textarea>
 
     </div>

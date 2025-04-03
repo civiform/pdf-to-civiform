@@ -2,7 +2,8 @@ import json
 
 JSON_EXAMPLE = {
     "title": "[Extracted Form Title]",
-    "help_text": "[Relevant Instructional Text]",
+    "help_text": "[Short Program Description]",
+    "Instructions": "[Detailed Program Instructions]",
     "sections": [
         {
             "title": "[Section Name]",
@@ -46,14 +47,19 @@ class LLMPrompts:
         
         Identify form fields, labels, and instructions, and format the output as JSON.
         Ensure correct field types (number, radio button, text, checkbox, etc.), group fields into sections,
-        and associate instructions with relevant fields. Please DO NOT ignore identifying help text.
-        Please skip checklist/instructions pages which is for context.
-        
+        and associate contextual help text with relevant fields.
+
+        Please summarize the checklist/instructions pages into clear, concise instructions for the program. Present the instructions in a well-organized layout. Use bullet points where appropriate.
+
         Additionally, detect repeating sections and mark them accordingly.
 
         A table is usually a repeating section. 
 
-        make sure to consider the following rules to extract input fields and types:
+        Every section must have a meaningful title and at least one field.
+
+        For fillable PDF files, make sure you extract dropdown options. 
+
+        Make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.
         2. **Currency**: Currency values with decimal separators (e.g., income, debts).
         3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option.
@@ -62,7 +68,7 @@ class LLMPrompts:
         6. **File Upload**: File attachments (e.g., PDFs, images)
         7. **Name**: A person's name. Please collate first name, middle name, and last name into full name.
         8. **Number**: Integer values e.g., number of household members etc.
-        9. **Radio Button**: Single selection from short lists (<=7 items, e.g., Yes/No questions).
+        9. **Radio Button**: Single selection from short lists (<=7 items, e.g., Yes/No questions). Every Radio Button questions must have at least two options.
         10. **Text**: Open-ended text field for letters, alphanumerics, or symbols.
         11. **Phone**: phone numbers.
         12.  If you see a field you do not understand, please use "unknown" as the type, associate relevant text as help text and assign a unique ID.
@@ -74,6 +80,7 @@ class LLMPrompts:
         """
         return prompt
 
+# TODO: Redundant instructions for radio button and checkbox were added as the LLM did not always follow the instructions in the step 1 LLM processing prompt
     @staticmethod
     def post_process_json_prompt(text):
         """Sends extracted json text to Gemini and asks it to collate related fields into appropriate civiform types, in particular names and address."""
@@ -90,8 +97,12 @@ class LLMPrompts:
         3. Within each section, If you find separate address related fields for unit, city, zip code, street, municipality, county, district etc, you must collate them into a single 'address' type field. Please DO NOT create separate fields for address components. However, do separate mailing address from physical address.
         4. For each "repeating_section", create an "entity_nickname" field which best describes the entity that the repeating entries are about.
         5. make sure IDs are unique across the entire form.
-        6. Any text field that can be a number (integer) must be corrected to a number type - such as company number, frequency etc.
+        6. Any text field that can be a number (integer) must be corrected to a number type - such as frequency etc.
         7. If necessary, create an additional new section with ONE fileupload field for text/checkbox fields that can be file attachments.
+        8. Condense each help text to no more than 100 characters. 
+        9. Remove the section if there is no fields in it.
+        10. Every Radio Button question must have at least two options.
+        11. Every checkbox question must have at least one option.
         
         Output JSON structure should match this example:
         {json.dumps(JSON_EXAMPLE, indent=4)}

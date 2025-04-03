@@ -62,3 +62,5 @@ Import the generated CiviForm JSON into CiviForm using the "[Import program" flo
 3.  Click the "Import existing program" link.
 4.  Paste the content of the `PREFIX-civiform-MODEL.json` file into the text area.
 5.  Follow the on-screen instructions to complete the import.
+6.  Follow instructions at the ["Edit a program"](https://docs.civiform.us/user-manual/civiform-admin-guide/working-with-programs/edit-a-program) to edit the program and "["How to publish programs"](https://docs.civiform.us/user-manual/civiform-admin-guide/working-with-programs/publish-a-program).
+

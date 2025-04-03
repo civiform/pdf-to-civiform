@@ -392,7 +392,7 @@ def convert_to_civiform_json(unprocessed_input_json):
                                     "translations":
                                         {
                                             "en_US":
-                                                "program-applicationSteps description TO-BE-EDITED"
+                                                input_json.get("Instructions") or "program-applicationSteps description TO-BE-EDITED"
                                         },
                                     "isRequired": True
                                 }

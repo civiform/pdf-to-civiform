@@ -59,7 +59,7 @@ class LLMPrompts:
 
         For fillable PDF files, make sure you extract dropdown options. 
 
-        Omit any sections clearly marked "For Office Use Only" or similar administrative purposes.
+        Omit any sections clearly marked "For Office Use Only", "For Administrative Use", "For Agency Use" or similar administrative purposes.
 
         Make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.

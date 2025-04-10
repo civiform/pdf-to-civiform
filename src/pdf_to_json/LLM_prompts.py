@@ -10,7 +10,7 @@ JSON_EXAMPLE = {
             "help_text": "[Relevant Instructional or informational Text (can be enclosed in brackets)]",
             "fields": [
                 {"label": "[Field Label]", "type": "[Field Type]", "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
-                {"label": "[Field Label]", "type": "[radio]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
+                {"label": "[Field Label]", "type": "[radio_button]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
                 {"label": "[Field Label]", "type": "[checkbox]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"}
             ]
         },
@@ -20,7 +20,7 @@ JSON_EXAMPLE = {
             "type": "repeating_section",
             "fields": [
                 {"label": "[Field Label]", "type": "[Field Type]", "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
-                {"label": "[Field Label]", "type": "[radio]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
+                {"label": "[Field Label]", "type": "[radio_button]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"},
                 {"label": "[Field Label]", "type": "[checkbox]", "options": ["opt 1", "opt 2", "opt 3"], "help_text": "[Field-specific Instruction]", "id": "[Generated Field ID]"}
             ]
         },
@@ -58,6 +58,8 @@ class LLMPrompts:
         Every section must have a meaningful title and at least one field.
 
         For fillable PDF files, make sure you extract dropdown options. 
+
+        Omit any sections clearly marked "For Office Use Only" or similar administrative purposes.
 
         Make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.

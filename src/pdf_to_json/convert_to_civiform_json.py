@@ -32,7 +32,7 @@ def replace_field_types(data):
     if isinstance(data, dict):
         if "type" in data:
             data["type"] = data["type"].lower()
-            if data["type"] not in ("name", "text", "number", "radio",
+            if data["type"] not in ("name", "text", "number", "radio_button",
                                     "checkbox", "currency", "date", "email",
                                     "address", "phone", "repeating_section",
                                     "fileupload"):
@@ -58,7 +58,7 @@ def replace_field_types(data):
 
 
 def create_question(field, question_id, enumerator_id=None):
-    is_multioption = field["type"] in ["radio", "checkbox", "dropdown"]
+    is_multioption = field["type"] in ["radio_button", "checkbox", "dropdown"]
     is_enumerator = field["type"] == "enumerator"
     is_fileupload = field["type"] == "fileupload"
 
@@ -134,7 +134,7 @@ def create_question(field, question_id, enumerator_id=None):
             )
 
         # Check the number of options for radio buttons
-        if field["type"] == "radio" and len(question_options) < 2:
+        if field["type"] == "radio_button" and len(question_options) < 2:
             logging.error(
                 f"ERROR: Radio button question '{field['label']}' must have at least two options."
             )
@@ -153,7 +153,7 @@ def create_question(field, question_id, enumerator_id=None):
 
         question["questionOptions"] = question_options
         question["multiOptionQuestionType"] = "RADIO_BUTTON" if field[
-            "type"] == "radio" else "CHECKBOX"
+            "type"] == "radio_button" else "CHECKBOX"
         question["optionAdminNames"] = option_admin_names
         question["options"] = question_options
 
@@ -186,7 +186,7 @@ def create_question(field, question_id, enumerator_id=None):
     elif question["type"] == "multioption":
         question["config"]["validationPredicates"]["minChoicesRequired"] = 1
         # Set maxChoicesAllowed to 1 if it's a radio button question
-        if field["type"] == "radio":
+        if field["type"] == "radio_button":
             question["config"]["validationPredicates"]["maxChoicesAllowed"] = 1
         else:  # For other multioption types (like checkbox), keep the original logic
             question["config"]["validationPredicates"][

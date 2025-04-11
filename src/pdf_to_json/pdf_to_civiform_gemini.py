@@ -2,6 +2,7 @@ from google import genai
 from google.genai import types
 from pathlib import Path
 import json
+import fitz  # PyMuPDF
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 import os
@@ -13,6 +14,9 @@ from io import StringIO
 import traceback # Import the traceback module
 import sys
 import argparse # Import argparse
+
+PAGE_LIMIT=5
+
 
 # This script extracts text from uploaded PDF files, uses Gemini LLM to
 # convert the text into structured JSON representing a form, formats the JSON
@@ -64,6 +68,62 @@ except (ValueError, OSError) as e:
           f"Check path and permissions. Error: {e}", file=sys.stderr)
     sys.exit(f"Startup failed: Directory setup error.")
 
+def fix_malformed_json(json_str, client, model_name):
+    try:
+        json.loads(json_str)
+        return json_str.strip()
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+        # Attempt to fix by adding missing closing brackets/braces
+        fix_malformed_json = LLMPrompts.fix_malformed_json_prompt(json_str)
+        fixed_json_str = client.models.generate_content(model=model_name, contents=[fix_malformed_json])
+        fixed_json_str = fixed_json_str.text.strip("`").lstrip("json")
+        try:
+            json.loads(fixed_json_str)
+            return fixed_json_str.strip()
+        except json.JSONDecodeError:
+            print("Failed to auto-fix JSON. Manual review needed.")
+            return None
+
+def get_pdf_page_count(pdf_bytes):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    return len(doc)
+
+def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
+    """Extracts a range of pages and returns them as bytes."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    new_doc = fitz.open()
+
+    for page_num in range(start_page, end_page):
+        if page_num < len(doc):
+            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+
+    return new_doc.write()
+
+def chunk_text(text, base_name, model_name):
+    """Splits JSON text into well-formed chunks based on title, help_text, and sections."""
+    try:
+        json_obj = json.loads(text)  # Validate input JSON
+    except json.JSONDecodeError:
+        logging.error("Invalid JSON input provided. Cannot split malformed JSON.")
+        return []
+
+    logging.info("Starting chunking of JSON")
+
+    # Ensure json_obj is not empty
+    if not json_obj:
+        logging.error("Empty JSON object provided for chunking.")
+        return []
+
+    chunks = []
+    for i, obj in enumerate(json_obj):
+      chunk = {
+        "title": obj.get("title", ""),
+        "help_text": obj.get("help_text", ""),
+        "sections": obj.get("sections", [])
+      }
+      chunks.append(chunk)
+    return chunks
 
 def initialize_gemini_model(
     model_name="gemini-2.0-flash",
@@ -120,44 +180,102 @@ def process_pdf_text_with_llm(client, model_name, file, base_name):
     logging.info(f"LLM processing input txt extracted from PDF...")
 
     try:
-        input_part = types.Part.from_bytes( 
-            data=file,
-            mime_type='application/pdf',
-        )
         logging.debug(f"Sending PDF to LLM...")
+        page_count = get_pdf_page_count(file)
+        logging.info(f"Page count {page_count}")
+        responses = []
 
         if not model_name.startswith("models/"):
             api_model_name = f"models/{model_name}"
         else:
             api_model_name = model_name
 
-        # This specific call structure might depend on the exact library version
-        # It accesses the 'models' attribute of the client, then calls generate_content
+        input_file = types.Part.from_bytes(data=file, mime_type="application/pdf")
         response = client.models.generate_content(
-             model=api_model_name, # Use potentially prefixed model name
-             contents=[input_part, prompt]
-             # TODO add safety_settings here
+            model=api_model_name,
+            contents=[input_file, prompt]
         )
 
-        # add robust check based on actual library behavior
+        # Add robust check based on actual library behavior
         if hasattr(response, 'text'):
-             response_text = response.text.strip("`").lstrip(
-                 "json")  # Remove ``` and "json" if present
-        elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts:
-             # Fallback to candidate structure if .text isn't available (more typical)
-             response_text = response.candidates[0].content.parts[0].text.strip("`").lstrip("json").strip()
+            response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
+        elif (
+            hasattr(response, 'candidates') and response.candidates and
+            hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
+        ):
+            # Fallback to candidate structure if .text isn't available (more typical)
+            response_text = (
+                response.candidates[0].content.parts[0].text
+                .strip("`")
+                .lstrip("json")
+                .strip()
+            )
         else:
-             # Cannot extract text, log the response structure for debugging
-             logging.error(f"Could not extract text from LLM response. Response object: {response}")
-             return None, "Failed to extract text from LLM response"
+            # Cannot extract text, log the response structure for debugging
+            logging.error(f"Could not extract text from LLM response. Response object: {response}")
+            return None, "Failed to extract text from LLM response"
 
+        try:
+          json_response = json.loads(response_text.strip())
+          save_response_to_file(response_text.strip(),
+                                base_name,
+                                f"pdf-extract-{model_name}",
+                                work_dir)
+          responses.append(json_response)
+        except json.JSONDecodeError:
+          logging.warning("Malformed json, needs processing in batches..")
 
-        if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
-            # Uses the global output_json_dir implicitly
-            save_response_to_file(
-                response_text, base_name, f"pdf-extract-{model_name}", output_json_dir)
+          for start in range(0, page_count, PAGE_LIMIT):
+              end = min(start + PAGE_LIMIT, page_count)
+              chunk_bytes = extract_pages_as_bytes(file, start, end)
 
-        return response_text, None  # Return response and None for error
+              input_file = types.Part.from_bytes(
+                  data=chunk_bytes, mime_type="application/pdf"
+              )
+
+              response = client.models.generate_content(
+                  model=api_model_name,
+                  contents=[input_file, prompt],
+              )
+
+              # Add robust check based on actual library behavior
+              if hasattr(response, 'text'):
+                  response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
+              elif (
+                  hasattr(response, 'candidates') and response.candidates and
+                  hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
+              ):
+                  # Fallback to candidate structure if .text isn't available (more typical)
+                  response_text = (
+                      response.candidates[0].content.parts[0].text
+                      .strip("`")
+                      .lstrip("json")
+                      .strip()
+                  )
+              else:
+                  # Cannot extract text, log the response structure for debugging
+                  logging.error(f"Could not extract text from LLM response. Response object: {response}")
+                  return None, "Failed to extract text from LLM response"
+
+              fixed_text_response = fix_malformed_json(response_text, client, model_name)
+              if fixed_text_response is not None:
+                  try:
+                      fixed_json = json.loads(fixed_text_response.strip())
+                      save_response_to_file(
+                          fixed_text_response.strip(),
+                          base_name,
+                          f"pdf-extract-{start}-{model_name}",
+                          work_dir,
+                      )
+                      responses.append(fixed_json)
+                  except json.JSONDecodeError:
+                      logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+              else:
+                  logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+
+        full_response = json.dumps(responses, ensure_ascii=False, indent=4)
+        save_response_to_file(full_response, base_name, f"pdf-extract-{model_name}", work_dir)
+        return full_response, None # Return response and None for error
 
     except Exception as e:
         error_details = f"Error in process_pdf_text_with_llm (model: {api_model_name}): {type(e).__name__} - {e}"
@@ -171,36 +289,40 @@ def post_processing_llm(client, model_name, text, base_name):
     prompt_post_processing_json = LLMPrompts.post_process_json_prompt(text)
 
     try:
-        logging.info(
-            f"post_processing_json_with_llm. collating names, addresses ...")
-        logging.debug(f"Sending collating data to LLM: {text}")
+        chunks = chunk_text(text, base_name, model_name)
+        aggregated_responses  = []   # Store processed responses as a single dictionary
+        logging.info("post_processing_json_with_llm: Collating names, addresses ...")
 
         if not model_name.startswith("models/"):
             api_model_name = f"models/{model_name}"
         else:
             api_model_name = model_name
+        for i, chunk in enumerate(chunks):
+            prompt_post_processing_json = LLMPrompts.post_process_json_prompt(chunk)
 
-        response = client.models.generate_content(
-            model=api_model_name,
-            contents=[prompt_post_processing_json]
-            # TODO add safety_settings here
-            )
+            response = client.models.generate_content(
+                model=api_model_name,
+                contents=[prompt_post_processing_json]
+                # TODO add safety_settings here
+                )
 
-        # Extract text robustly, similar to process_pdf_text_with_llm
-        if hasattr(response, 'text'):
-             response_text = response.text.strip("`").lstrip(
-                 "json")
-        elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts:
-             response_text = response.candidates[0].content.parts[0].text.strip("`").lstrip("json").strip()
-        else:
-             logging.error(f"Could not extract text from LLM post-processing response. Response object: {response}")
-             return None # Treat as failure
+            # Extract text robustly, similar to process_pdf_text_with_llm
+            if hasattr(response, 'text'):
+                 response_text = response.text.strip("`").lstrip(
+                     "json")
+            elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts:
+                 response_text = response.candidates[0].content.parts[0].text.strip("`").lstrip("json").strip()
+            else:
+                 logging.error(f"Could not extract text from LLM post-processing response. Response object: {response}")
+                 return None # Treat as failure
 
+            aggregated_responses.append(json.loads(response_text))
+
+        result=json.dumps(aggregated_responses, ensure_ascii=False, indent=4)
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            save_response_to_file(
-                response_text, base_name, f"post-processed-{model_name}", output_json_dir)
+          save_response_to_file(result, base_name, f"post-processed-{model_name}", output_json_dir)
+        return result  # Return as a formatted JSON string
 
-        return response_text  # Return the processed text
 
     except Exception as e:
         error_details = f"Error during collating fields (model: {api_model_name}): {type(e).__name__} - {e}"
@@ -337,7 +459,7 @@ def process_file(file_full, model_name, client):
             f"formated-{model_name}", output_json_dir)
 
         parsed_json = json.loads(formated_post_processed_json)
-        civiform_json = convert_to_civiform_json(parsed_json)
+        civiform_json = convert_to_civiform_json(parsed_json[0])
         save_response_to_file(
             civiform_json, base_name, f"civiform-{model_name}", output_json_dir)
         logging.info(f"Done processing file: {file_full}")

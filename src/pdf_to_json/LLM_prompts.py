@@ -80,6 +80,27 @@ class LLMPrompts:
         """
         return prompt
 
+    @staticmethod
+    def fix_malformed_json_prompt(text):
+            """Prompt for converting PDF text to intermediary JSON."""
+            prompt = f"""
+            You are an expert in government forms.  Process the following malformed extracted json from a government form to the correct output format:
+            {text}
+            Instructions:
+            You will receive a JSON string that may be truncated, improperly formatted, or missing closing brackets/braces.
+            Your job is to repair the JSON while preserving all original data.
+            Ensure that:
+            Every opening bracket '{' or [ has a corresponding closing bracket '}' or ].
+            No JSON keys or values are lost.
+            The output remains structurally valid and well-formed.
+            Do NOT modify field values or alter key names. Only fix structural issues.
+            If a portion of the JSON is ambiguous due to truncation, make a best-guess correction while maintaining logical consistency.
+            **Output Rules:**
+            - Output ONLY the corrected JSON—do NOT add explanations or comments.
+            - Ensure the JSON can be parsed without errors in standard JSON libraries.
+            """
+            return prompt
+
 # TODO: Redundant instructions for radio button and checkbox were added as the LLM did not always follow the instructions in the step 1 LLM processing prompt
     @staticmethod
     def post_process_json_prompt(text):

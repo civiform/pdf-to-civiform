@@ -25,16 +25,14 @@
         formData.append('logLevel', getLogLevel())
         formData.append('geminiApiKey', document.getElementById('geminiApiKeyInput').value || '')
 
+        const intermediaryDetails = document.getElementById('intermediary-details')
         const intermediaryOutputTextArea = document.getElementById('intermediaryOutput')
         const civiformOutputTextArea = document.getElementById('civiformOutput')
-        const intermediaryOutputContainer = document.getElementById('intermediary-output-container')
         const civiformOutputContainer = document.getElementById('civiform-output-container')
-
 
         // Clear previous outputs and logs, show processing message
         intermediaryOutputTextArea.value = 'Processing...'
         civiformOutputTextArea.value = 'Processing...'
-        intermediaryOutputContainer.classList.add('show')
         civiformOutputContainer.classList.add('show')
 
 
@@ -89,7 +87,6 @@
 
         } catch (error) {
             const failMsg = `Request failed: ${error}`;
-            intermediaryOutputTextArea.value = failMsg;
             civiformOutputTextArea.value = failMsg;
           }
       }
@@ -164,11 +161,13 @@
 
 
       document.addEventListener('DOMContentLoaded', function () {
-        // Add listener for the new intermediary output area
-        const intermediaryOutputTextArea = document.getElementById('intermediaryOutput');
-        const civiformOutputTextArea = document.getElementById('output');
-        const directoryOutputTextArea = document.getElementById('directoryOutput');
-
+        const intermediaryDetails = document.getElementById('intermediary-details');
+        if (intermediaryDetails && !intermediaryDetails.hasAttribute('data-initialized')) {
+             // Check if we already set the state
+             // No need to explicitly close it, default is closed.
+             // But we could add logic here if needed.
+             // intermediaryDetails.setAttribute('data-initialized', 'true');
+        }
 
       });
 
@@ -185,6 +184,7 @@
         } else if (document.selection) {
           document.selection.empty();
         }
+
         alert(`Copied content from ${textAreaId} to clipboard!`);
       }
 
@@ -229,14 +229,15 @@
     </form>
 
     <div class="output-container" id="intermediary-output-container">
-      <h3>Intermediary Post-Processed JSON:</h3>
-      <textarea
-        id="intermediaryOutput"
-        placeholder="Intermediary JSON from post-processing step will appear here."
-      ></textarea>
-      <button onclick="copyToClipboard('intermediaryOutput')">Copy Intermediary JSON</button>
+      <details id="intermediary-details">
+          <summary>Intermediary Post-Processed JSON (Click to expand):</summary>
+          <textarea
+            id="intermediaryOutput"
+            placeholder="Intermediary JSON from post-processing step will appear here."
+          ></textarea>
+          <button onclick="copyToClipboard('intermediaryOutput')">Copy Intermediary JSON</button>
+      </details>
     </div>
-
     <div class="output-container" id="civiform-output-container">
        <h3>CiviForm JSON:</h3>
       <textarea
@@ -267,6 +268,5 @@
         class="output-area"
         placeholder="Directory processing summary and details will appear here."
       ></textarea>
-
-  </body>
+      </div> </body>
 </html>

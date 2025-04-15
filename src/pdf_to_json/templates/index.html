@@ -25,13 +25,18 @@
         formData.append('logLevel', getLogLevel())
         formData.append('geminiApiKey', document.getElementById('geminiApiKeyInput').value || '')
 
+        const intermediaryOutputTextArea = document.getElementById('intermediaryOutput')
+        const civiformOutputTextArea = document.getElementById('civiformOutput')
+        const intermediaryOutputContainer = document.getElementById('intermediary-output-container')
+        const civiformOutputContainer = document.getElementById('civiform-output-container')
 
-        const outputTextArea = document.getElementById('output')
-        const outputContainer = document.querySelector('.output-container')
 
-        outputTextArea.value = 'Processing...'
-        updateCharacterCount('output', '')
-        outputContainer.classList.add('show')
+        // Clear previous outputs and logs, show processing message
+        intermediaryOutputTextArea.value = 'Processing...'
+        civiformOutputTextArea.value = 'Processing...'
+        intermediaryOutputContainer.classList.add('show')
+        civiformOutputContainer.classList.add('show')
+
 
         try {
           const response = await fetch('/upload', {
@@ -48,30 +53,45 @@
             if (errorData.details) {
                 errorText += `\n\nDetails:\n${errorData.details}`;
             }
-            outputTextArea.value = errorText;
-            updateCharacterCount('output', errorText);
+            civiformOutputTextArea.value = errorText;
             return;
           }
 
-          const responseData = await response.text()
-          try {
-            const firstParse = JSON.parse(responseData) // Parse the outer string
-            const jsonData = JSON.parse(firstParse) // Parse the inner string (which was the result of the first parse)
-            outputTextArea.value = JSON.stringify(jsonData, null, 2)
-          } catch (error) {
-            console.error('Error parsing JSON:', error)
-            outputTextArea.value =
-              'Error parsing JSON: ' +
-              error.message +
-              '\n\nRaw data:\n' +
-              responseData
+          const responseData = await response.json()
+
+          let intermediaryJsonString = "No intermediary JSON received."
+          let civiformJsonString = "No CiviForm JSON received."
+
+          if (responseData.intermediary_json) {
+            try {
+              // Parse and stringify for pretty printing
+              const intermediaryData = JSON.parse(responseData.intermediary_json)
+              intermediaryJsonString = JSON.stringify(intermediaryData, null, 2)
+            } catch (error) {
+              console.error('Error parsing intermediary JSON:', error)
+              intermediaryJsonString = 'Error parsing intermediary JSON: ' + error.message + '\n\nRaw data:\n' + responseData.intermediary_json
+            }
           }
 
-          updateCharacterCount('output', outputTextArea.value)
+          if (responseData.civiform_json) {
+             try {
+                 // Parse and stringify for pretty printing
+                 const civiformData = JSON.parse(responseData.civiform_json)
+                 civiformJsonString = JSON.stringify(civiformData, null, 2)
+             } catch (error) {
+                 console.error('Error parsing CiviForm JSON:', error)
+                 civiformJsonString = 'Error parsing CiviForm JSON: ' + error.message + '\n\nRaw data:\n' + responseData.civiform_json
+             }
+          }
+
+          intermediaryOutputTextArea.value = intermediaryJsonString
+          civiformOutputTextArea.value = civiformJsonString
+
         } catch (error) {
-          outputTextArea.value = `Request failed: ${error}`
-          updateCharacterCount('output', outputTextArea.value)
-        }
+            const failMsg = `Request failed: ${error}`;
+            intermediaryOutputTextArea.value = failMsg;
+            civiformOutputTextArea.value = failMsg;
+          }
       }
 
       async function uploadDirectory(event) {
@@ -81,7 +101,6 @@
         const outputContainer = document.querySelector('#directory-output-container');
 
         outputTextArea.value = 'Processing directory... please wait';
-        updateCharacterCount('directoryOutput', '');
         outputContainer.classList.add('show');
 
         const formData = new FormData();
@@ -113,7 +132,6 @@
                 errorText += `\n\nDetails:\n${errorData.details}`;
             }
             outputTextArea.value = errorText;
-            updateCharacterCount('directoryOutput', errorText);
             return;
           }
 
@@ -136,41 +154,22 @@
                 outputText += "No file details available.\n";
             }
             outputTextArea.value = outputText;
-            updateCharacterCount('directoryOutput', outputText);
-
           } else {
             outputTextArea.value = 'No summary available';
-            updateCharacterCount('directoryOutput', outputTextArea.value);
           }
         } catch (error) {
           outputTextArea.value = `Request failed: ${error}`;
-          updateCharacterCount('directoryOutput', outputTextArea.value);
         }
       }
 
-      function updateCharacterCount(textAreaId, text) {
-        const charCountElement = document.getElementById(`${textAreaId}CharCount`);
-        if (charCountElement) {
-            charCountElement.textContent = `Character Count: ${text.length}`;
-        }
-      }
 
       document.addEventListener('DOMContentLoaded', function () {
-        const outputTextArea = document.getElementById('output');
+        // Add listener for the new intermediary output area
+        const intermediaryOutputTextArea = document.getElementById('intermediaryOutput');
+        const civiformOutputTextArea = document.getElementById('output');
         const directoryOutputTextArea = document.getElementById('directoryOutput');
 
-        if (outputTextArea) {
-            updateCharacterCount('output', outputTextArea.value);
-            outputTextArea.addEventListener('input', function () {
-                updateCharacterCount('output', outputTextArea.value);
-            });
-        }
-        if (directoryOutputTextArea) {
-            updateCharacterCount('directoryOutput', directoryOutputTextArea.value);
-            directoryOutputTextArea.addEventListener('input', function () {
-                updateCharacterCount('directoryOutput', directoryOutputTextArea.value);
-            });
-        }
+
       });
 
       function copyToClipboard(textAreaId) {
@@ -188,8 +187,7 @@
         }
         alert(`Copied content from ${textAreaId} to clipboard!`);
       }
-    </script>
-    <script>
+
       function getLogLevel() {
         const logLevelSelect = document.getElementById('logLevelSelect')
         const selectedLogLevel = logLevelSelect.value
@@ -207,11 +205,6 @@
         <select id="LLMModelSelect">
           <option value="gemini-2.0-pro-exp">gemini-2.0-pro-exp</option>
           <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-          <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
-          <option value="gemini-2.0-flash-thinking">
-            gemini-2.0-flash-thinking
-          </option>
-          <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
         </select>
       </div>
       <div class="form-group">
@@ -235,13 +228,21 @@
       <button type="submit">Convert a single PDF file</button>
     </form>
 
-    <div class="output-container">
+    <div class="output-container" id="intermediary-output-container">
+      <h3>Intermediary Post-Processed JSON:</h3>
       <textarea
-        id="output"
-        placeholder="CiviForm JSON output will appear here."
+        id="intermediaryOutput"
+        placeholder="Intermediary JSON from post-processing step will appear here."
       ></textarea>
-      <!-- <div id="outputCharCount">Character Count: 0</div> -->
-      <button onclick="copyToClipboard('output')">Copy to Clipboard</button> and then import to CiviForm using <a href='https://docs.civiform.us/user-manual/civiform-admin-guide/program-migration#importing-a-program'>the Import Program flow.</a>
+      <button onclick="copyToClipboard('intermediaryOutput')">Copy Intermediary JSON</button>
+    </div>
+
+    <div class="output-container" id="civiform-output-container">
+       <h3>CiviForm JSON:</h3>
+      <textarea
+        id="civiformOutput" placeholder="CiviForm JSON output will appear here."
+      ></textarea>
+      <button onclick="copyToClipboard('civiformOutput')">Copy CiviForm JSON</button> and then import to CiviForm using <a href='https://docs.civiform.us/user-manual/civiform-admin-guide/program-migration#importing-a-program' target="_blank" rel="noopener noreferrer">the Import Program flow.</a>
     </div>
 <hr>
     <h2 class="section-spacer">Convert multiple PDFs:</h2>
@@ -260,17 +261,12 @@
     </form>
 
     <div class="output-container" id="directory-output-container">
+      <h3>Directory Processing Summary:</h3>
       <textarea
         id="directoryOutput"
         class="output-area"
         placeholder="Directory processing summary and details will appear here."
       ></textarea>
 
-    </div>
-
-    <div id="debug-log-container" style="display: none;">
-      <h2>Debug Log:</h2>
-      <pre id="debugLog"></pre>
-    </div>
   </body>
 </html>

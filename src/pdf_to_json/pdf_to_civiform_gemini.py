@@ -141,7 +141,7 @@ def initialize_gemini_model(
         genai.Client: The initialized Gemini client.
     """
     try:
-        loaded_api_key = None 
+        loaded_api_key = None
         if api_key:
             loaded_api_key = api_key
             logging.info("Using Gemini API key provided directly.")
@@ -164,7 +164,7 @@ def initialize_gemini_model(
              return None
 
         client = genai.Client(api_key=loaded_api_key)
-        logging.info(f"Gemini client initialized successfully.") 
+        logging.info(f"Gemini client initialized successfully.")
         return client
 
     except Exception as e:
@@ -381,7 +381,7 @@ def format_json_single_line_fields(json_string: str) -> str:
         ) from e  # Raise a ValueError
 
 
-def save_response_to_file(response, base_name, output_suffix, output_directory): 
+def save_response_to_file(response, base_name, output_suffix, output_directory):
     """
     Saves a given response string to a file inside the specified output directory.
     Assumes the directory already exists.
@@ -421,7 +421,7 @@ def process_file(file_full, model_name, client):
         client : The initialized Gemini client.
 
     Returns:
-        str: The CiviForm JSON string.
+        dict: A dictionary containing 'intermediary_json' and 'civiform_json' strings, or None if processing fails.
     Raises:
         Exception: If LLM processing or post-processing fails.
     """
@@ -464,7 +464,11 @@ def process_file(file_full, model_name, client):
             civiform_json, base_name, f"civiform-{model_name}", output_json_dir)
         logging.info(f"Done processing file: {file_full}")
 
-        return civiform_json
+        # Return both the intermediary and CiviForm JSON
+        return {
+            "intermediary_json": formated_post_processed_json,
+            "civiform_json": civiform_json
+        }
     except Exception as e:
         logging.error(f"Failed to process file {file_full}: {e}")
         raise # Re-raise the exception to be caught in the route
@@ -511,20 +515,25 @@ def upload_file():
             return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
         # Process the file
-        civiform_json = process_file(file_full, model_name, client)
+        processing_result = process_file(file_full, model_name, client)
 
         # Get logs generated during processing
         debug_log = log_stream.getvalue()
 
-        # Check result and return
-        if civiform_json is None:
+        if processing_result is None:
              error_message = f"Failed to process file '{filename}'."
              logging.error(error_message)
              return jsonify({"error": error_message, "debug_log": debug_log}), 500
         else:
             logging.info(f"Successfully processed '{filename}' via upload.")
-            logging.info(f"Length of civiform_json: {len(civiform_json)}")
-            return jsonify(civiform_json)
+            logging.info(f"Length of intermediary json: {len(processing_result.get('intermediary_json', ''))}")
+            logging.info(f"Length of civiform_json: {len(processing_result.get('civiform_json', ''))}")
+            # Return the dictionary containing both JSON strings
+            response_data = {
+                "intermediary_json": processing_result.get("intermediary_json"),
+                "civiform_json": processing_result.get("civiform_json"),
+            }
+            return jsonify(response_data)
 
     except Exception as e:
         error_message = f"An unexpected error occurred during file upload/processing: {e}"
@@ -537,6 +546,9 @@ def upload_file():
 def process_directory(directory, model_name, client):
     """
     Processes all PDF files in a given directory and returns summary information.
+    NOTE: This function currently does *not* return the individual JSON outputs,
+          only success/failure status per file. Modifying it to return all JSONs
+          could lead to very large responses.
 
     Args:
         directory (str): The path to the directory containing PDF files.
@@ -572,8 +584,8 @@ def process_directory(directory, model_name, client):
             file_full = os.path.join(abs_directory, filename)
             file_results[filename] = {"success": False, "error_message": ""}
             try:
-                civiform_json = process_file(file_full, model_name, client)
-                if civiform_json:
+                processing_output = process_file(file_full, model_name, client)
+                if processing_output and processing_output.get("civiform_json"):
                     success_count += 1
                     file_results[filename]["success"] = True
                 else:
@@ -583,6 +595,7 @@ def process_directory(directory, model_name, client):
                 fail_count += 1
                 error_message = f"Error processing {filename}: {e}"
                 file_results[filename]["error_message"] = error_message
+                logging.error(f"Error during directory processing for {filename}: {e}\n{traceback.format_exc()}")
 
     logging.info(f"--- Directory Processing Complete: {abs_directory} ---")
     logging.info(f"Summary: Total={total_files}, Success={success_count}, Failed={fail_count}")
@@ -654,7 +667,6 @@ def upload_directory():
                 "fail_count": directory_result["fail_count"],
                 "file_results": directory_result["file_results"]
             },
-            "debug_log": debug_log
         }
         logging.info(f"Directory processing finished for: {directory_path}")
         return jsonify(response_data)
@@ -725,16 +737,23 @@ if __name__ == '__main__':
 
         # Process the single file
         try:
-            civiform_json_output = process_file(
+            result_dict = process_file(
                 file_full=input_path,
                 model_name=args.model_name, # Pass model name
                 client=client               # Pass initialized client
             )
-            logging.info(f"Successfully processed '{args.input_file}'. Final CiviForm JSON saved in '{output_json_dir}'.")
-            sys.exit(0) # Exit successfully
+            if result_dict and result_dict.get("civiform_json"):
+                logging.info(f"Successfully processed '{args.input_file}'.")
+                logging.info(f"Final CiviForm JSON saved in '{output_json_dir}'.")
+                sys.exit(0)
+            else:
+                 logging.error(f"Command-line processing completed for '{args.input_file}' but failed to generate required JSON output.")
+                 sys.exit(1)
+
 
         except Exception as e:
             logging.error(f"Command-line processing failed for '{args.input_file}'. See logs above for details.")
+            logging.error(traceback.format_exc())
             sys.exit(1) # Exit with error code
 
     else:

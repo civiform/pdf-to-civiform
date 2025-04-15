@@ -21,7 +21,7 @@ input[type="file"]::file-selector-button {
     cursor: pointer;
 }
 
-#output, #directoryOutput { /* Apply styles to both output areas */
+#civiformOutput, #intermediaryOutput, #directoryOutput { /* Apply styles to output areas */
     width: 95%;
     height: 120px;
     border: 1px solid #ccc;

@@ -2,6 +2,7 @@ from google import genai
 from google.genai import types
 from pathlib import Path
 import json
+import fitz  # PyMuPDF
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 import os
@@ -11,23 +12,33 @@ from convert_to_civiform_json import convert_to_civiform_json
 from LLM_prompts import LLMPrompts
 from io import StringIO
 import traceback # Import the traceback module
+import sys
+import argparse # Import argparse
+
+PAGE_LIMIT=5
+
 
 # This script extracts text from uploaded PDF files, uses Gemini LLM to
 # convert the text into structured JSON representing a form, formats the JSON
 # for better readability, and then converts it into a CiviForm-compatible
-# JSON format.  It uses a Flask web server to handle file uploads.
+# JSON format.  It uses a Flask web server to handle file uploads OR can be
+# run from the command line to process a single file.
 
 # make sure you have your gemini API key in ~/google_api_key
 # install the latest geminiAPI package: pip install -U -q "google-genai"
 
-# run this script from command line as: python pdf_to_civiform.py
-# output files are stored in ~/pdf-to-civiform/
+# run web server: python pdf_to_civiform_gemini.py
+# run command line: python pdf_to_civiform_gemini.py --input-file /path/to/file.pdf [--model-name model] [--log-level LEVEL]
+# output files are stored in ~/pdf_to_civiform/output-json
 
-# Configure logging
+# --- Global Configuration ---
+DEFAULT_MODEL_NAME = "gemini-2.0-flash" # Default model used in initialize_gemini_model
+
+# Configure logging (Initial setup, level can be changed later via CLI)
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Capture logging output for web display
+# Capture logging output for web display (if web server runs)
 log_stream = StringIO()
 log_handler = logging.StreamHandler(log_stream)
 log_handler.setFormatter(
@@ -36,21 +47,83 @@ logging.getLogger().addHandler(log_handler)
 
 app = Flask(__name__)
 
-work_dir = os.path.expanduser("~/pdf-to-civiform/")
-default_upload_dir = os.path.join(
-    work_dir, 'uploads')  # Define the default directory
-os.makedirs(default_upload_dir, exist_ok=True)
-logging.info("Working directory: %s", work_dir)
-logging.info(f"Default upload directory: {default_upload_dir}")
+# --- Directory Setup ---
+try:
+    work_dir = os.path.expanduser("~/pdf_to_civiform")
+    if not os.path.isabs(work_dir): # Ensure we got an absolute path
+        raise ValueError("Could not resolve home directory path.")
 
-# set python cache dir
-default_python_cache_path = os.path.join(work_dir, 'python_cache')
-if 'PYTHONPYCACHEPREFIX' not in os.environ:
-    os.environ['PYTHONPYCACHEPREFIX'] = default_python_cache_path
+    default_upload_dir = os.path.join(work_dir, 'uploads')
+    output_json_dir = os.path.join(work_dir, "output-json")
 
-logging.info(
-    f"PYTHONPYCACHEPREFIX  set to: {os.environ['PYTHONPYCACHEPREFIX']}")
+    os.makedirs(default_upload_dir, exist_ok=True)
+    os.makedirs(output_json_dir, exist_ok=True)
 
+    logging.info(f"Using base directory: {work_dir}")
+    logging.info(f"upload directory: {default_upload_dir}")
+    logging.info(f"json output directory: {output_json_dir}")
+
+except (ValueError, OSError) as e:
+    logging.error(f"Failed to setup required directories based on '~/pdf_to_civiform'. " \
+          f"Check path and permissions. Error: {e}", file=sys.stderr)
+    sys.exit(f"Startup failed: Directory setup error.")
+
+def fix_malformed_json(json_str, client, model_name):
+    try:
+        json.loads(json_str)
+        return json_str.strip()
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+        # Attempt to fix by adding missing closing brackets/braces
+        fix_malformed_json = LLMPrompts.fix_malformed_json_prompt(json_str)
+        fixed_json_str = client.models.generate_content(model=model_name, contents=[fix_malformed_json])
+        fixed_json_str = fixed_json_str.text.strip("`").lstrip("json")
+        try:
+            json.loads(fixed_json_str)
+            return fixed_json_str.strip()
+        except json.JSONDecodeError:
+            print("Failed to auto-fix JSON. Manual review needed.")
+            return None
+
+def get_pdf_page_count(pdf_bytes):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    return len(doc)
+
+def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
+    """Extracts a range of pages and returns them as bytes."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    new_doc = fitz.open()
+
+    for page_num in range(start_page, end_page):
+        if page_num < len(doc):
+            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+
+    return new_doc.write()
+
+def chunk_text(text, base_name, model_name):
+    """Splits JSON text into well-formed chunks based on title, help_text, and sections."""
+    try:
+        json_obj = json.loads(text)  # Validate input JSON
+    except json.JSONDecodeError:
+        logging.error("Invalid JSON input provided. Cannot split malformed JSON.")
+        return []
+
+    logging.info("Starting chunking of JSON")
+
+    # Ensure json_obj is not empty
+    if not json_obj:
+        logging.error("Empty JSON object provided for chunking.")
+        return []
+
+    chunks = []
+    for i, obj in enumerate(json_obj):
+      chunk = {
+        "title": obj.get("title", ""),
+        "help_text": obj.get("help_text", ""),
+        "sections": obj.get("sections", [])
+      }
+      chunks.append(chunk)
+    return chunks
 
 def initialize_gemini_model(
     model_name="gemini-2.0-flash",
@@ -68,28 +141,35 @@ def initialize_gemini_model(
         genai.Client: The initialized Gemini client.
     """
     try:
+        loaded_api_key = None 
         if api_key:
-            GOOGLE_API_KEY = api_key
-            logging.info("Using Gemini API key provided in the input box.")
+            loaded_api_key = api_key
+            logging.info("Using Gemini API key provided directly.")
         else:
             try:
                 with open(api_key_file, "r") as f:
-                    GOOGLE_API_KEY = f.read().strip()
-                logging.info("Google API key loaded successfully from file.")
+                    loaded_api_key = f.read().strip()
+                logging.info(f"Google API key loaded successfully from file: {api_key_file}")
             except FileNotFoundError:
                 logging.error(
-                    f"Error: Google API key file not found at {api_key_file} and no key provided in input."
+                    f"Error: Google API key file not found at {api_key_file} and no key provided directly."
                 )
                 return None
             except Exception as e:
-                logging.error(f"Error loading Google API key from file: {e}")
+                logging.error(f"Error loading Google API key from file '{api_key_file}': {e}")
                 return None
 
-        client = genai.Client(api_key=GOOGLE_API_KEY)
+        if not loaded_api_key:
+             logging.error("No Google API key available.")
+             return None
+
+        client = genai.Client(api_key=loaded_api_key)
+        logging.info(f"Gemini client initialized successfully.") 
         return client
 
     except Exception as e:
         logging.error(f"Error initializing Gemini client: {e}")
+        logging.error(traceback.format_exc()) # Added traceback logging for init errors
         return None
 
 
@@ -100,25 +180,107 @@ def process_pdf_text_with_llm(client, model_name, file, base_name):
     logging.info(f"LLM processing input txt extracted from PDF...")
 
     try:
-        input_file = types.Part.from_bytes(
-            data=file,
-            mime_type='application/pdf',
-        )
         logging.debug(f"Sending PDF to LLM...")
+        page_count = get_pdf_page_count(file)
+        logging.info(f"Page count {page_count}")
+        responses = []
+
+        if not model_name.startswith("models/"):
+            api_model_name = f"models/{model_name}"
+        else:
+            api_model_name = model_name
+
+        input_file = types.Part.from_bytes(data=file, mime_type="application/pdf")
         response = client.models.generate_content(
-            model=model_name, contents=[input_file, prompt])
-        response_text = response.text.strip("`").lstrip(
-            "json")  # Remove ``` and json if present
+            model=api_model_name,
+            contents=[input_file, prompt]
+        )
 
-        if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            save_response_to_file(
-                response_text, base_name, f"pdf-extract-{model_name}", work_dir)
+        # Add robust check based on actual library behavior
+        if hasattr(response, 'text'):
+            response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
+        elif (
+            hasattr(response, 'candidates') and response.candidates and
+            hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
+        ):
+            # Fallback to candidate structure if .text isn't available (more typical)
+            response_text = (
+                response.candidates[0].content.parts[0].text
+                .strip("`")
+                .lstrip("json")
+                .strip()
+            )
+        else:
+            # Cannot extract text, log the response structure for debugging
+            logging.error(f"Could not extract text from LLM response. Response object: {response}")
+            return None, "Failed to extract text from LLM response"
 
-        return response_text, None  # Return response and None for error
+        try:
+          json_response = json.loads(response_text.strip())
+          save_response_to_file(response_text.strip(),
+                                base_name,
+                                f"pdf-extract-{model_name}",
+                                work_dir)
+          responses.append(json_response)
+        except json.JSONDecodeError:
+          logging.warning("Malformed json, needs processing in batches..")
+
+          for start in range(0, page_count, PAGE_LIMIT):
+              end = min(start + PAGE_LIMIT, page_count)
+              chunk_bytes = extract_pages_as_bytes(file, start, end)
+
+              input_file = types.Part.from_bytes(
+                  data=chunk_bytes, mime_type="application/pdf"
+              )
+
+              response = client.models.generate_content(
+                  model=api_model_name,
+                  contents=[input_file, prompt],
+              )
+
+              # Add robust check based on actual library behavior
+              if hasattr(response, 'text'):
+                  response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
+              elif (
+                  hasattr(response, 'candidates') and response.candidates and
+                  hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
+              ):
+                  # Fallback to candidate structure if .text isn't available (more typical)
+                  response_text = (
+                      response.candidates[0].content.parts[0].text
+                      .strip("`")
+                      .lstrip("json")
+                      .strip()
+                  )
+              else:
+                  # Cannot extract text, log the response structure for debugging
+                  logging.error(f"Could not extract text from LLM response. Response object: {response}")
+                  return None, "Failed to extract text from LLM response"
+
+              fixed_text_response = fix_malformed_json(response_text, client, model_name)
+              if fixed_text_response is not None:
+                  try:
+                      fixed_json = json.loads(fixed_text_response.strip())
+                      save_response_to_file(
+                          fixed_text_response.strip(),
+                          base_name,
+                          f"pdf-extract-{start}-{model_name}",
+                          work_dir,
+                      )
+                      responses.append(fixed_json)
+                  except json.JSONDecodeError:
+                      logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+              else:
+                  logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+
+        full_response = json.dumps(responses, ensure_ascii=False, indent=4)
+        save_response_to_file(full_response, base_name, f"pdf-extract-{model_name}", work_dir)
+        return full_response, None # Return response and None for error
 
     except Exception as e:
-        error_details = f"process_pdf_text_with_llm: {e}"
+        error_details = f"Error in process_pdf_text_with_llm (model: {api_model_name}): {type(e).__name__} - {e}"
         logging.error(error_details)
+        logging.error(traceback.format_exc()) # Log full traceback
         return None, error_details # Return None for response and the error details
 
 
@@ -127,22 +289,45 @@ def post_processing_llm(client, model_name, text, base_name):
     prompt_post_processing_json = LLMPrompts.post_process_json_prompt(text)
 
     try:
-        logging.info(
-            f"post_processing_json_with_llm. collating names, addresses ...")
-        logging.debug(f"Sending collating data to LLM: {text}")
-        response = client.models.generate_content(
-            model=model_name, contents=[prompt_post_processing_json])
-        response = response.text.strip("`").lstrip(
-            "json")  # Remove ``` and json if present
+        chunks = chunk_text(text, base_name, model_name)
+        aggregated_responses  = []   # Store processed responses as a single dictionary
+        logging.info("post_processing_json_with_llm: Collating names, addresses ...")
 
+        if not model_name.startswith("models/"):
+            api_model_name = f"models/{model_name}"
+        else:
+            api_model_name = model_name
+        for i, chunk in enumerate(chunks):
+            prompt_post_processing_json = LLMPrompts.post_process_json_prompt(chunk)
+
+            response = client.models.generate_content(
+                model=api_model_name,
+                contents=[prompt_post_processing_json]
+                # TODO add safety_settings here
+                )
+
+            # Extract text robustly, similar to process_pdf_text_with_llm
+            if hasattr(response, 'text'):
+                 response_text = response.text.strip("`").lstrip(
+                     "json")
+            elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts:
+                 response_text = response.candidates[0].content.parts[0].text.strip("`").lstrip("json").strip()
+            else:
+                 logging.error(f"Could not extract text from LLM post-processing response. Response object: {response}")
+                 return None # Treat as failure
+
+            aggregated_responses.append(json.loads(response_text))
+
+        result=json.dumps(aggregated_responses, ensure_ascii=False, indent=4)
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            save_response_to_file(
-                response, base_name, f"post-processed-{model_name}", work_dir)
+          save_response_to_file(result, base_name, f"post-processed-{model_name}", output_json_dir)
+        return result  # Return as a formatted JSON string
 
-        return response  # Return the processed text
 
     except Exception as e:
-        logging.error(f"Error during collating fields: {e}")
+        error_details = f"Error during collating fields (model: {api_model_name}): {type(e).__name__} - {e}"
+        logging.error(error_details)
+        logging.error(traceback.format_exc()) # Log full traceback
         return None
 
 
@@ -196,28 +381,34 @@ def format_json_single_line_fields(json_string: str) -> str:
         ) from e  # Raise a ValueError
 
 
-def save_response_to_file(response, base_name, output_suffix, work_dir):
+def save_response_to_file(response, base_name, output_suffix, output_directory): 
     """
-    Saves a given response string to a file.
+    Saves a given response string to a file inside the specified output directory.
+    Assumes the directory already exists.
 
     Args:
         response (str): The string to be saved to the file.
         base_name (str): The base name of the file.
         output_suffix (str): The suffix to append to the filename.
-        work_dir (str): The working directory where the file will be saved.
+        output_directory (str): The absolute path to the directory where the file should be saved.
     """
     try:
+        # Construct the path using the provided output directory
         output_file_full = os.path.join(
-            work_dir, f"{base_name}-{output_suffix}.json")
+            output_directory, f"{base_name}-{output_suffix}.json") # Use output_directory parameter
 
-        # Remove "```" from both ends and "json" from the start
-        response = re.sub(r'^```\s*|\s*```$|\s*json\s*', '', response)
+        # Clean the response
+        cleaned_response = re.sub(r'^\s*```(?:json)?\s*|\s*```\s*$', '', response, flags=re.IGNORECASE)
 
+        # Save the file
         with open(output_file_full, "w", encoding="utf-8") as f:
-            f.write(response)
+            f.write(cleaned_response)
+
         logging.info(f"{output_suffix} Response saved to: {output_file_full}")
+
     except Exception as e:
-        logging.error(f"Error saving response to file: {e}")
+        logging.error(f"Error saving response to file '{output_file_full}': {e}")
+        logging.error(traceback.format_exc())
 
 
 def process_file(file_full, model_name, client):
@@ -253,7 +444,7 @@ def process_file(file_full, model_name, client):
         logging.info(f"Formating json  .... ")
         formated_json = format_json_single_line_fields(structured_json)
         save_response_to_file(
-            formated_json, base_name, f"formated-{model_name}", work_dir)
+            formated_json, base_name, f"formated-{model_name}", output_json_dir)
 
         post_processed_json = post_processing_llm(
             client, model_name, formated_json, base_name)
@@ -265,12 +456,12 @@ def process_file(file_full, model_name, client):
             post_processed_json)
         save_response_to_file(
             formated_post_processed_json, f"{base_name}-post-processed",
-            f"formated-{model_name}", work_dir)
+            f"formated-{model_name}", output_json_dir)
 
         parsed_json = json.loads(formated_post_processed_json)
-        civiform_json = convert_to_civiform_json(parsed_json)
+        civiform_json = convert_to_civiform_json(parsed_json[0])
         save_response_to_file(
-            civiform_json, base_name, f"civiform-{model_name}", work_dir)
+            civiform_json, base_name, f"civiform-{model_name}", output_json_dir)
         logging.info(f"Done processing file: {file_full}")
 
         return civiform_json
@@ -281,11 +472,15 @@ def process_file(file_full, model_name, client):
 
 @app.route('/')
 def index():
+    log_stream.seek(0)
+    log_stream.truncate(0)
     return render_template('index.html', debug_log="")
 
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    log_stream.seek(0)
+    log_stream.truncate(0)
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
@@ -295,34 +490,48 @@ def upload_file():
 
         filename = secure_filename(file.filename)
         file_full = os.path.join(default_upload_dir, filename)
+        logging.info(f"Receiving file upload: {filename}")
         file.save(file_full)
+        logging.info(f"File saved to: {file_full}")
 
         # Get LLM model name, API key, and log level from the request
-        model_name = request.form.get('modelName')
+        model_name = request.form.get('modelName', DEFAULT_MODEL_NAME) # Use default if not provided
         gemini_api_key = request.form.get('geminiApiKey')
         log_level_str = request.form.get('logLevel', 'INFO').upper()
         log_level = getattr(logging, log_level_str, logging.INFO)
         logging.getLogger().setLevel(log_level)
         logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
-        logging.debug(f"log_level_str passed in: {log_level_str}")
+        logging.info(f"Using model for request: {model_name}")
 
-        client = initialize_gemini_model(model_name, api_key=gemini_api_key)
+        client = initialize_gemini_model(model_name=model_name, api_key=gemini_api_key)
         if client is None:
-            error_message = "Failed to initialize Gemini client. Check API key or file."
+            error_message = "Failed to initialize Gemini client. Check API key configuration and logs."
             logging.error(error_message)
-            return jsonify({"error": error_message}), 500
+            debug_log = log_stream.getvalue()
+            return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
+        # Process the file
         civiform_json = process_file(file_full, model_name, client)
 
-        # Log the length
-        logging.info(f"Length of civiform_json: {len(civiform_json)}")
+        # Get logs generated during processing
+        debug_log = log_stream.getvalue()
 
-        return jsonify(civiform_json)
+        # Check result and return
+        if civiform_json is None:
+             error_message = f"Failed to process file '{filename}'."
+             logging.error(error_message)
+             return jsonify({"error": error_message, "debug_log": debug_log}), 500
+        else:
+            logging.info(f"Successfully processed '{filename}' via upload.")
+            logging.info(f"Length of civiform_json: {len(civiform_json)}")
+            return jsonify(civiform_json)
 
     except Exception as e:
-        error_message = f"An error occurred during file upload: {e}"
-        logging.error(f"{error_message}\n{traceback.format_exc()}") # Log full traceback
-        return jsonify({"error": error_message, "details": traceback.format_exc()}), 500
+        error_message = f"An unexpected error occurred during file upload/processing: {e}"
+        logging.error(error_message)
+        logging.error(traceback.format_exc()) # Log full traceback
+        debug_log = log_stream.getvalue()
+        return jsonify({"error": error_message, "details": traceback.format_exc(), "debug_log": debug_log}), 500
 
 
 def process_directory(directory, model_name, client):
@@ -340,23 +549,27 @@ def process_directory(directory, model_name, client):
     success_count = 0
     fail_count = 0
     total_files = 0
-    # Check if the directory is outside the allowed working directory
-    if not os.path.abspath(directory).startswith(os.path.abspath(work_dir)):
+
+    abs_directory = os.path.abspath(os.path.expanduser(directory))
+    if not abs_directory.startswith(os.path.abspath(work_dir)):
         logging.error(
             f"Attempted access outside working directory: {directory}")
         return {
-            "total_files": 0,
-            "success_count": 0,
-            "fail_count": 0,
-            "file_results": {}
+            "total_files": 0, "success_count": 0, "fail_count": 0, "file_results": {}
         }
 
     file_results = {}
+    logging.info(f"--- Processing Directory: {abs_directory} ---")
 
-    for filename in os.listdir(directory):
+    if not os.path.isdir(abs_directory):
+         logging.error(f"Directory not found: {abs_directory}")
+         return {"total_files": 0, "success_count": 0, "fail_count": 0, "file_results": {}}
+
+
+    for filename in os.listdir(abs_directory):
         if filename.lower().endswith(".pdf"):
             total_files += 1
-            file_full = os.path.join(directory, filename)
+            file_full = os.path.join(abs_directory, filename)
             file_results[filename] = {"success": False, "error_message": ""}
             try:
                 civiform_json = process_file(file_full, model_name, client)
@@ -370,20 +583,20 @@ def process_directory(directory, model_name, client):
                 fail_count += 1
                 error_message = f"Error processing {filename}: {e}"
                 file_results[filename]["error_message"] = error_message
-                logging.error(f"{error_message}\n{traceback.format_exc()}")
 
+    logging.info(f"--- Directory Processing Complete: {abs_directory} ---")
+    logging.info(f"Summary: Total={total_files}, Success={success_count}, Failed={fail_count}")
 
-    # Prepare the debug log string
-    debug_log = log_stream.getvalue()
+    current_debug_log = log_stream.getvalue()
     log_stream.seek(0)
-    log_stream.truncate(0)
+    log_stream.truncate(0) # Clear stream after reading
 
     return {
         "total_files": total_files,
         "success_count": success_count,
         "fail_count": fail_count,
         "file_results": file_results,
-        "debug_log": debug_log
+        "debug_log": current_debug_log
     }
 
 
@@ -392,43 +605,42 @@ def upload_directory():
     """
     Endpoint to process a directory of files and return a summary.
     """
+
     log_stream.seek(0)
     log_stream.truncate(0)
+    logging.info("Received request to process directory.")
 
     # Get LLM model name, API key, and log level from the request
-    model_name = request.form.get('modelName')
+    model_name = request.form.get('modelName', DEFAULT_MODEL_NAME)
     gemini_api_key = request.form.get('geminiApiKey')
     log_level_str = request.form.get('logLevel', 'INFO').upper()
     log_level = getattr(logging, log_level_str, logging.INFO)
     logging.getLogger().setLevel(log_level)
     logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
-    logging.debug(f"log_level_str passed in: {log_level_str}")
+    logging.info(f"Using model for request: {model_name}")
 
-    directory_path = request.form.get(
-        'directoryPath', default_upload_dir)  # Get path or default
 
-    # Sanitize the directory path
-    directory_path = os.path.expanduser(
-        directory_path)  # Expand ~ and other special chars
-    directory_path = os.path.abspath(directory_path)  # Convert to absolute path
+    directory_path_input = request.form.get('directoryPath', default_upload_dir) # Use default if not provided
+    directory_path = os.path.abspath(os.path.expanduser(directory_path_input))
 
     # Basic check to prevent accessing outside of the work dir
     if not directory_path.startswith(work_dir):
-        logging.error(
-            f"Requested directory is outside of the work directory: {directory_path}"
-        )
-        return jsonify({"error": "Invalid directory path."}), 400
+        logging.error(f"Requested directory outside work directory: {directory_path}")
+        debug_log = log_stream.getvalue() # Capture log before returning error
+        return jsonify({"error": "Invalid directory path.", "debug_log": debug_log}), 400
 
-    # Ensure that the requested path is a directory
     if not os.path.isdir(directory_path):
         logging.error(f"Invalid directory path: {directory_path}")
-        return jsonify({"error": "Invalid directory path."}), 400
+        debug_log = log_stream.getvalue()
+        return jsonify({"error": "Invalid directory path.", "debug_log": debug_log}), 400
+
 
     client = initialize_gemini_model(model_name, api_key=gemini_api_key)
     if client is None:
         error_message = "Failed to initialize Gemini client. Check API key or file."
         logging.error(error_message)
-        return jsonify({"error": error_message}), 500
+        debug_log = log_stream.getvalue()
+        return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
     try:
         directory_result = process_directory(directory_path, model_name, client)
@@ -436,6 +648,7 @@ def upload_directory():
 
         response_data = {
             "summary": {
+                "processed_directory": directory_path,
                 "total_files": directory_result["total_files"],
                 "success_count": directory_result["success_count"],
                 "fail_count": directory_result["fail_count"],
@@ -443,12 +656,90 @@ def upload_directory():
             },
             "debug_log": debug_log
         }
+        logging.info(f"Directory processing finished for: {directory_path}")
         return jsonify(response_data)
     except Exception as e:
         error_message = f"An error occurred during directory processing: {e}"
         logging.error(f"{error_message}\n{traceback.format_exc()}")
-        return jsonify({"error": error_message, "details": traceback.format_exc()}), 500
+        debug_log = log_stream.getvalue()
+        return jsonify({"error": error_message, "details": traceback.format_exc(), "debug_log": debug_log}), 500
 
+
+# --- Main Execution Block ---
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 7000)))
+    # --- Argument Parser Setup ---
+    parser = argparse.ArgumentParser(
+        description="Process a PDF form file to CiviForm JSON using Gemini LLM. Runs as a web server if --input-file is not provided.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+
+    parser.add_argument(
+        '--input-file',
+        type=str,
+        default=None, # Default is None, indicating web server mode
+        help='Path to a single PDF file to process (activates command-line mode).'
+        )
+    parser.add_argument(
+        '--model-name',
+        type=str,
+        default=DEFAULT_MODEL_NAME, # Use the global default
+        help='Name of the Gemini model to use (e.g., gemini-1.5-flash, gemini-pro).'
+        )
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        default='INFO',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        help='Set the logging level for console output in command-line mode.'
+        )
+
+    args = parser.parse_args()
+
+    # --- Conditional Execution: Command Line or Web Server ---
+    if args.input_file:
+        # --- Command Line Mode ---
+        logging.info("--- Running in Command Line Mode ---")
+
+        # Set log level based on command line arg for console output
+        log_level_cli = getattr(logging, args.log_level.upper(), logging.INFO)
+        logging.getLogger().setLevel(log_level_cli) # Set root logger level
+        for handler in logging.getLogger().handlers:
+             if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr or handler.stream == sys.stdout:
+                   handler.setLevel(log_level_cli)
+        logging.info(f"Console log level set to: {args.log_level}")
+
+        # Validate input file path
+        input_path = os.path.abspath(os.path.expanduser(args.input_file))
+        if not os.path.isfile(input_path):
+            logging.error(f"Input file not found or is not a file: {input_path}")
+            sys.exit(1) # Exit with error code
+
+        # Initialize Gemini Client using the specified model name
+        # API key is handled internally by the function (reading from file)
+        logging.info(f"Initializing Gemini client for model: {args.model_name}")
+        client = initialize_gemini_model(model_name=args.model_name) # Pass only model name
+        if client is None:
+            logging.error("Failed to initialize Gemini client. Check API key file/access. Exiting.")
+            sys.exit(1)
+
+        # Process the single file
+        try:
+            civiform_json_output = process_file(
+                file_full=input_path,
+                model_name=args.model_name, # Pass model name
+                client=client               # Pass initialized client
+            )
+            logging.info(f"Successfully processed '{args.input_file}'. Final CiviForm JSON saved in '{output_json_dir}'.")
+            sys.exit(0) # Exit successfully
+
+        except Exception as e:
+            logging.error(f"Command-line processing failed for '{args.input_file}'. See logs above for details.")
+            sys.exit(1) # Exit with error code
+
+    else:
+        # --- Web Server Mode ---
+        # No --input-file provided, run the Flask app
+        logging.info("--- Running in Web Server Mode ---")
+        logging.info(f"Starting Flask server...")
+        app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 7000)))

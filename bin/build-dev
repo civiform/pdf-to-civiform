@@ -1,0 +1,123 @@
+#! /usr/bin/env bash
+
+# DOC: Build a new pdf-to-civiform development docker image
+# DOC: Optional environment variables:
+# DOC:   PUSH_IMAGE - Push the newly built image to registry if set to any value
+# DOC:   NAMESPACE  - Overrides the default docker namespace 'civiform'.
+# DOC:                Example: us-west1-docker.pkg.dev/my-gcp-project/my-repo
+# DOC:   PLATFORM   - Platform architecture to build (e.g. linux/amd64, linux/arm64)
+
+set -euo pipefail # Exit on error, undefined variable, pipe failures
+
+# --- Determine Project Root ---
+# Assumes this script is in project_root/bin/
+cd "$(dirname "$0")" # Go to bin/ directory
+readonly PROJECT_ROOT="$(cd .. && pwd)" # Go up one level to get project root
+cd "${OLDPWD}" # Go back to original directory
+
+# --- Configuration ---
+readonly DEFAULT_NAMESPACE="civiform"
+readonly NAMESPACE="${NAMESPACE:=${DEFAULT_NAMESPACE}}"
+readonly IMAGE="pdf-to-civiform-dev" # Image name component
+readonly TAG="latest"                # Development tag
+readonly FULL_IMAGE_NAME="${NAMESPACE}/${IMAGE}:${TAG}" # Fully namespaced image name
+readonly LOCAL_TAG_NAME="${IMAGE}:${TAG}"             # Simpler local tag
+readonly SRC_DIR="${PROJECT_ROOT}/src/pdf_to_json"    # Source code / build context
+readonly DOCKERFILE="${SRC_DIR}/Dockerfile"           # Path to Dockerfile
+
+# --- Build Arguments ---
+# These are passed to 'docker buildx build'
+BUILD_ARGS=(
+  # Specify the Dockerfile location relative to the build context
+  --file "${DOCKERFILE}"
+  # Tag the image with the full namespace
+  --tag "${FULL_IMAGE_NAME}"
+  # Attempt to use cache from previous builds of the same tagged image in the registry
+  --cache-from "type=registry,ref=${FULL_IMAGE_NAME}"
+  # Embed cache metadata in the image for faster layer reuse
+  --build-arg BUILDKIT_INLINE_CACHE=1
+  # Load the built image into the local Docker daemon
+  --load
+  # The last argument is the build context directory
+  "${SRC_DIR}"
+)
+
+# Handle optional platform argument for cross-compilation
+PLATFORM_ARG=()
+if [[ -n "${PLATFORM:-}" ]]; then
+  echo "Building for specified platform: ${PLATFORM}"
+  PLATFORM_ARG=(--platform "${PLATFORM}")
+else
+  echo "Building for local platform architecture."
+fi
+
+# --- Docker Login Helper ---
+# Checks if login seems necessary and attempts login if PUSH_IMAGE is set
+docker::do_docker_login() {
+  local registry_host=""
+  # Extract registry hostname if namespace looks like a registry path
+  if [[ "${NAMESPACE}" == *"/"* ]]; then
+    registry_host=$(echo "${NAMESPACE}" | cut -d'/' -f1)
+    # Avoid treating default namespace as a registry host unless it contains '.'
+    if [[ "${registry_host}" == "${DEFAULT_NAMESPACE}" && "${registry_host}" != *.* ]]; then
+       registry_host="" # Assume default Docker Hub or local
+    fi
+  fi
+
+  # Crude check if logged in - might need adjustment for specific registries
+  # Tries to grep for Username or the specific Registry host in docker info
+  local login_check_pattern="Username:"
+  if [[ -n "${registry_host}" ]]; then
+      login_check_pattern+="|Registry: ${registry_host}"
+  fi
+
+  if ! docker info | grep -q -E "(${login_check_pattern})" ; then
+    echo "Attempting Docker login${registry_host:+ to ${registry_host}}..."
+    if [[ -n "${registry_host}" ]]; then
+        docker login "${registry_host}"
+    else
+        docker login # Login to default registry (usually Docker Hub)
+    fi
+  else
+    echo "Docker login detected${registry_host:+ for ${registry_host}}."
+  fi
+}
+
+# --- Build ---
+echo "Starting ${IMAGE} build from context: ${SRC_DIR}"
+echo "Command: docker buildx build ${PLATFORM_ARG[*]:-} ${BUILD_ARGS[*]}"
+docker buildx build "${PLATFORM_ARG[@]}" "${BUILD_ARGS[@]}"
+echo "Build complete. Image available as: ${FULL_IMAGE_NAME}"
+
+# --- Push (Optional) ---
+# Executes if the PUSH_IMAGE environment variable is set to any non-empty value
+if [[ -n "${PUSH_IMAGE:-}" ]]; then
+  echo "PUSH_IMAGE set. Attempting to push..."
+  # Ensure logged in before pushing
+  docker::do_docker_login
+
+  # Define arguments specifically for the push command (using --push instead of --load)
+  PUSH_BUILD_ARGS=(
+    --file "${DOCKERFILE}"
+    --tag "${FULL_IMAGE_NAME}"
+    # Use cache from registry when pushing
+    --cache-from "type=registry,ref=${FULL_IMAGE_NAME}"
+    # Inline cache for future builds
+    --build-arg BUILDKIT_INLINE_CACHE=1
+    # Add the --push flag
+    --push
+    # Build context directory
+    "${SRC_DIR}"
+   )
+  echo "Pushing ${FULL_IMAGE_NAME}..."
+  echo "Command: docker buildx build ${PLATFORM_ARG[*]:-} ${PUSH_BUILD_ARGS[*]}"
+  docker buildx build "${PLATFORM_ARG[@]}" "${PUSH_BUILD_ARGS[@]}"
+  echo "Push complete."
+fi
+
+# --- Local Tagging ---
+# Apply the simpler local tag (e.g., pdf-to-civiform-dev:latest) for convenience
+echo "Tagging ${FULL_IMAGE_NAME} as ${LOCAL_TAG_NAME} locally."
+docker tag "${FULL_IMAGE_NAME}" "${LOCAL_TAG_NAME}"
+
+echo "Build script finished."

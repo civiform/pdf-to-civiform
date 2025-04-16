@@ -220,15 +220,7 @@
         } catch (error) {
           outputTextArea.value = `Request failed: ${error}`;
         }
-      }
-
-
-      document.addEventListener('DOMContentLoaded', function () {
-        const intermediaryDetails = document.getElementById('intermediary-details');
-        if (intermediaryDetails && !intermediaryDetails.hasAttribute('data-initialized')) {
-        }
-
-      });
+      };
 
       function copyToClipboard(textAreaId) {
         const outputTextArea = document.getElementById(textAreaId);

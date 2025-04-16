@@ -47,12 +47,13 @@ class LLMPrompts:
         
         Identify form fields, labels, and instructions, and format the output as JSON.
         Ensure correct field types (number, radio button, text, checkbox, etc.), group fields into sections,
-        and associate contextual help text with relevant fields.
+        and associate instructions with relevant fields. Please DO NOT ignore identifying help text.
+        Please skip checklist/instructions pages that are only for context.
+        Please skip fields requesting a social security number or password.
 
         Please summarize the checklist/instructions pages into clear, concise instructions for the program. Present the instructions in a well-organized layout. Use bullet points where appropriate.
 
         Additionally, detect repeating sections and mark them accordingly.
-
         A table is usually a repeating section. 
 
         Every section must have a meaningful title and at least one field.
@@ -64,7 +65,7 @@ class LLMPrompts:
         Make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.
         2. **Currency**: Currency values with decimal separators (e.g., income, debts).
-        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option.
+        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option. Options cannot be empty strings.
         4. **Date**: Captures dates (e.g., birth date, graduation date, month, year etc).
         5. **Email**: email address. Please collate domain and username if asked separately.
         6. **File Upload**: File attachments (e.g., PDFs, images)
@@ -114,18 +115,21 @@ class LLMPrompts:
         
         {text}
         
-        make sure to consider the following rules to process the json: 
+        Make sure to consider the following rules to process the json:
+        
         1. Do NOT create nested sections.
         2. Within each section, If you find separate fields for first name, middle name, and last name, you must collate them into a single 'name' type field. Please DO NOT create separate fields for name fields.
         3. Within each section, If you find separate address related fields for unit, city, zip code, street, municipality, county, district etc, you must collate them into a single 'address' type field. Please DO NOT create separate fields for address components. However, do separate mailing address from physical address.
         4. For each "repeating_section", create an "entity_nickname" field which best describes the entity that the repeating entries are about.
-        5. make sure IDs are unique across the entire form.
+        5. Make sure IDs are unique across the entire form.
         6. Any text field that can be a number (integer) must be corrected to a number type - such as frequency etc.
         7. If necessary, create an additional new section with ONE fileupload field for text/checkbox fields that can be file attachments.
-        8. Condense each help text to no more than 100 characters. 
-        9. Remove the section if there is no fields in it.
-        10. Every Radio Button question must have at least two options.
-        11. Every checkbox question must have at least one option.
+        8. Every section must have a title.
+        9. Remove any fields for social security numbers or passwords.
+        10. Condense each help text to no more than 100 characters. 
+        11. Remove the section if there are no fields in it.
+        12. Every Radio Button question must have at least two options.
+        13. Every checkbox question must have at least one option.
         
         Output JSON structure should match this example:
         {json.dumps(JSON_EXAMPLE, indent=4)}

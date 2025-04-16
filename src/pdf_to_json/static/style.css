@@ -1,84 +1,92 @@
 h1 { font-family: 'Google Sans', Arial, sans-serif;
-     text-align: center;}
+    text-align: center;}
 h2 { font-family: 'Google Sans', Arial, sans-serif; }
 body { font-family: 'Google Sans', Arial, sans-serif;
-       margin-left: 200px;
-       margin-right: 200px;
-     }
+      margin-left: 200px;
+      margin-right: 200px;
+    }
 
 input[type="file"]::file-selector-button {
-    display: none;
+   display: none;
 }
 
 #pdfFile {
-    font-family: 'Google Sans', Arial, sans-serif;
-    font-size: 16px;
-    background-color: #cdf;
-    color: #333;
-    padding: 5px 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
+   font-family: 'Google Sans', Arial, sans-serif;
+   font-size: 16px;
+   background-color: #cdf;
+   color: #333;
+   padding: 5px 10px;
+   border: 1px solid #ccc;
+   border-radius: 5px;
+   cursor: pointer;
 }
 
-#output, #directoryOutput { /* Apply styles to both output areas */
-    width: 95%;
-    height: 120px;
-    border: 1px solid #ccc;
-    padding: 10px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    overflow: auto;
-    resize: both;
-    word-wrap: break-word;
+#civiformOutput, #intermediaryOutput, #directoryOutput { /* Apply styles to output areas */
+   width: 95%;
+   height: 120px;
+   border: 1px solid #ccc;
+   padding: 10px;
+   font-family: monospace;
+   white-space: pre-wrap;
+   overflow: auto;
+   resize: both;
+   word-wrap: break-word;
 }
 
 .form-group {
-    margin-bottom: 10px;
-    margin-right: 100px;
+   margin-bottom: 10px;
+   margin-right: 100px;
 }
 
 .inline-form-group {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
+   display: flex;
+   align-items: center;
+   margin-bottom: 10px;
 }
 
 .inline-form-group label {
-    margin-right: 10px;
+   margin-right: 10px;
 }
 
 .inline-form-group input[type='text'] {
-    margin-right: 20px;
-    /* Increased margin */
+   margin-right: 20px;
+   /* Increased margin */
 }
 
 /* Style all buttons to look like the default file input */
 button {
-    border: 1px solid #ccc;
-    background-color: #cdf;
-    /* Light gray background */
-    color: #333;
-    /* Dark gray text */
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-right: 10px;
-    font-family: inherit;
-    /* Use the default font */
-    font-size: inherit;
-    /* Use the default font size */
+   border: 1px solid #ccc;
+   background-color: #cdf;
+   /* Light gray background */
+   color: #333;
+   /* Dark gray text */
+   padding: 5px 10px;
+   border-radius: 4px;
+   cursor: pointer;
+   margin-right: 10px;
+   font-family: inherit;
+   /* Use the default font */
+   font-size: inherit;
+   /* Use the default font size */
 }
 
 .section-spacer {
-    margin-top: 50px;
+   margin-top: 50px;
 }
 
 .file-input-container {
-    display: flex;
-    align-items: center;
+   display: flex;
+   align-items: center;
 }
 
 .output-container {
-    margin-bottom: 20px;
+   margin-bottom: 20px;
+}
+
+/* === Added Styles for Collapsible Section === */
+summary {
+ cursor: pointer;
+ display: list-item; /* Ensures the disclosure triangle (marker) is shown */
+ font-weight: bold; /* Make it look similar to a heading */
+ margin-bottom: 5px; /* Add some space below the summary title */
 }

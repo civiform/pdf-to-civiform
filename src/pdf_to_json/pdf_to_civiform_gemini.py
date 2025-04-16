@@ -542,6 +542,68 @@ def upload_file():
         debug_log = log_stream.getvalue()
         return jsonify({"error": error_message, "details": traceback.format_exc(), "debug_log": debug_log}), 500
 
+@app.route('/convert_to_civiform', methods=['POST'])
+def handle_convert_to_civiform():
+    """
+    Endpoint to convert intermediary JSON (provided in request body)
+    to CiviForm JSON.
+    """
+    log_stream.seek(0)
+    log_stream.truncate(0)
+    logging.info("Received request to convert intermediary JSON to CiviForm JSON.")
+
+    if not request.is_json:
+        logging.error("Request content type is not application/json")
+        return jsonify({"error": "Request must be JSON"}), 415
+
+    try:
+        request_data = request.get_json()
+        intermediary_json_str = request_data.get('intermediary_json')
+
+        if not intermediary_json_str:
+            logging.error("No 'intermediary_json' field found in request.")
+            return jsonify({"error": "Missing 'intermediary_json' in request body"}), 400
+
+        # Parse the intermediary JSON string provided by the client
+        try:
+            intermediary_data = json.loads(intermediary_json_str)
+            logging.info("Successfully parsed intermediary JSON from request.")
+        except json.JSONDecodeError as e:
+            logging.error(f"Invalid JSON received in 'intermediary_json': {e}")
+            return jsonify({"error": "Invalid JSON format provided in 'intermediary_json'", "details": str(e)}), 400
+
+        # Check if the parsed data is a list and extract the first element if needed
+        data_to_convert = None
+        if isinstance(intermediary_data, list):
+            if not intermediary_data:
+                logging.error("Intermediary data list is empty.")
+                return jsonify({"error": "Intermediary JSON data is an empty list"}), 400
+            # Assume the relevant data is the first element of the list
+            data_to_convert = intermediary_data[0]
+        elif isinstance(intermediary_data, dict):
+             data_to_convert = intermediary_data
+             logging.info("Intermediary data is a dictionary, using it directly for conversion.")
+        else:
+             logging.error(f"Intermediary data is not a list or dict, type is {type(intermediary_data)}")
+             return jsonify({"error": "Unexpected format for intermediary JSON data"}), 400
+
+        if not isinstance(data_to_convert, dict):
+             logging.error(f"Data selected for conversion is not a dictionary (type: {type(data_to_convert)}). Cannot proceed.")
+             return jsonify({"error": "Selected data for conversion is not in the expected dictionary format."}), 400
+
+        # Perform the conversion
+        civiform_json_result = convert_to_civiform_json(data_to_convert)
+        logging.info("Conversion to CiviForm JSON successful.")
+
+        # Return the resulting CiviForm JSON string
+        return jsonify({"civiform_json": civiform_json_result})
+
+    except Exception as e:
+        error_message = f"An error occurred during CiviForm JSON conversion: {e}"
+        logging.error(error_message)
+        logging.error(traceback.format_exc())
+        return jsonify({"error": error_message, "details": traceback.format_exc()}), 500
+
 
 def process_directory(directory, model_name, client):
     """

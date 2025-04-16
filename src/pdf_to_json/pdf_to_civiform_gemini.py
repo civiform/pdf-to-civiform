@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 from pathlib import Path
 import json
-import fitz  # PyMuPDF
+import pymupdf
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 import os
@@ -86,13 +86,13 @@ def fix_malformed_json(json_str, client, model_name):
             return None
 
 def get_pdf_page_count(pdf_bytes):
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     return len(doc)
 
 def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
     """Extracts a range of pages and returns them as bytes."""
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    new_doc = fitz.open()
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    new_doc = pymupdf.open()
 
     for page_num in range(start_page, end_page):
         if page_num < len(doc):

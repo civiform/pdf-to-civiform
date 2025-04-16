@@ -44,19 +44,20 @@ class LLMPrompts:
         
         Instructions:
         
-        Identify form fields, labels, and instructions, and format the output as JSON.
+        Identify form fields, labels, and instructions, and format the output as JSON. 
         Ensure correct field types (number, radio button, text, checkbox, etc.), group fields into sections,
         and associate instructions with relevant fields. Please DO NOT ignore identifying help text.
-        Please skip checklist/instructions pages which is for context.
+        Please skip checklist/instructions pages which is only for context.
+        Please skip fields requesting a social security number or password.
         
         Additionally, detect repeating sections and mark them accordingly.
 
         A table is usually a repeating section. 
 
-        make sure to consider the following rules to extract input fields and types:
+        Make sure to consider the following rules to extract input fields and types:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.
         2. **Currency**: Currency values with decimal separators (e.g., income, debts).
-        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option.
+        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option. Options cannot be empty strings.
         4. **Date**: Captures dates (e.g., birth date, graduation date, month, year etc).
         5. **Email**: email address. Please collate domain and username if asked separately.
         6. **File Upload**: File attachments (e.g., PDFs, images)
@@ -84,7 +85,8 @@ class LLMPrompts:
         
         {text}
         
-        make sure to consider the following rules to process the json: 
+        Make sure to consider the following rules to process the json:
+        
         1. Do NOT create nested sections.
         2. Within each section, If you find separate fields for first name, middle name, and last name, you must collate them into a single 'name' type field. Please DO NOT create separate fields for name fields.
         3. Within each section, If you find separate address related fields for unit, city, zip code, street, municipality, county, district etc, you must collate them into a single 'address' type field. Please DO NOT create separate fields for address components. However, do separate mailing address from physical address.
@@ -92,6 +94,8 @@ class LLMPrompts:
         5. make sure IDs are unique across the entire form.
         6. Any text field that can be a number (integer) must be corrected to a number type - such as company number, frequency etc.
         7. If necessary, create an additional new section with ONE fileupload field for text/checkbox fields that can be file attachments.
+        8. Every section must have a title.
+        9. Remove any fields for social security numbers or passwords.
         
         Output JSON structure should match this example:
         {json.dumps(JSON_EXAMPLE, indent=4)}

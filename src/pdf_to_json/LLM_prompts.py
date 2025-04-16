@@ -47,7 +47,7 @@ class LLMPrompts:
         Identify form fields, labels, and instructions, and format the output as JSON. 
         Ensure correct field types (number, radio button, text, checkbox, etc.), group fields into sections,
         and associate instructions with relevant fields. Please DO NOT ignore identifying help text.
-        Please skip checklist/instructions pages which is only for context.
+        Please skip checklist/instructions pages that are only for context.
         Please skip fields requesting a social security number or password.
         
         Additionally, detect repeating sections and mark them accordingly.

@@ -5,9 +5,9 @@ Relevant documentation and active work items are captured in this epic: [https:/
 
 ## How to run
 ### setup
-1.  **Gemini API Key**: Make sure you have your Gemini API key saved in a file named `google_api_key` in your home directory (`~/google_api_key`). (Instructions: [https://ai.google.dev/gemini-api/docs/quickstart?lang=python](https://ai.google.dev/gemini-api/docs/quickstart?lang=python))
+1.  **Gemini API Key**: Get a Gemini API key (instructions: [https://ai.google.dev/gemini-api/docs/quickstart?lang=python](https://ai.google.dev/gemini-api/docs/quickstart?lang=python)) and either save it in a file named `google_api_key` in your home directory (`~/google_api_key`) or include it within the import UI.
 2.  **Python Environment**: This script requires Python 3.x.
-3.  **Dependencies**: Install dependencies: "pip install -r python_dependencies.txt "
+3.  **Dependencies**: Install dependencies: `pip install -r python_dependencies.txt`. The python dependencies are in src/pdf_to_json/, so you may need to run `pip install -r src/pdf_to_json/python_dependencies.txt` if you're in the main directory. Note: this can be done within a codespace or on your machine.
 
 
 ## Running the Application

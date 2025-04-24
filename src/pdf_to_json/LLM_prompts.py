@@ -41,31 +41,64 @@ class LLMPrompts:
         """Prompt for converting PDF text to intermediary JSON."""
         prompt = f"""
         You are an expert in document analysis and structured form modeling.  
-        You are given a PDF document containing a blank government application form.
+        As input, you are given a PDF that is an application form.
+
+        As output, you will generate JSON that represents the form, using the structure in this example:
+        {json.dumps(JSON_EXAMPLE, indent=4)}
+
+        The application form consists of a series of Rectangular Areas.
+        Every word on the form is part of a Rectangular Area.
         
-        Instructions:
+        Each Rectangular Area is one of four types:
+        - Section, which contains Fields for the user to fill out, possibly including help text.
+        - Internal Use, which contains Fields for someone other than the user to fill out.
+        - Instructions, which contains help text.
+        - Other.
+
+        A Section:
+        - is a rectangular area of the PDF.
+        - sometimes has a title.
+        - sometimes contains instructions for the user.
+        - has at least one Field for the user to fill out, and usually at least several.
+        - does not contain an Internal Use.
+
+        An Internal Use:
+        - is a small rectangular area of the PDF containing the words "For Office Use", "For Administrative Use", "For Agency Use", "Use Only" or similar.
+        - is a small rectangular area of the PDF with a border separating it from the rest of the form.
+        - is possibly in a different typeface than the rest of the form.
+        - does not contain instructions for the user.
+        - does not contain the title of the form.
+        - probably does not contain more than 10 words.
+        - probably has no more than 8 Fields.
+        - is usually in a corner of the page.
+
+        When deciding whether a Rectangular Area is an Internal Use, use the smallest possible rectangle satisfying the above criteria.
+        Do not include any content from the Internal Use in the output.
+
+        A Field is one of:
+        - text box
+        - radio button
+        - checkbox
+
+        For fillable PDF files, extract dropdown options.
         
-        Identify form fields, labels, and instructions, and format the output as JSON.
-        Ensure correct field types (number, radio button, text, checkbox, etc.), group fields into sections,
-        and associate instructions with relevant fields. Please DO NOT ignore identifying help text.
-        Please skip checklist/instructions pages that are only for context.
-        Please skip fields requesting a social security number or password.
+        In the PDF, help text and instructions can appear either above or to the left of the Field.
+        If any help text or instructions are present in the PDF, include it verbatim in the JSON in the help_text field.
 
-        Please summarize the checklist/instructions pages into clear, concise instructions for the program. Present the instructions in a well-organized layout. Use bullet points where appropriate.
+        Identify PDF Fields, labels, help text, and instructions, and format the output as JSON.
+        Skip Fields requiring a social security number or password.
 
-        Additionally, detect repeating sections and mark them accordingly.
-        A table is usually a repeating section. 
+        Group related Fields into Sections.
 
-        Every section must have a meaningful title and at least one field.
+        Present the instructions in a well-organized layout. Use bullet points where appropriate.
 
-        For fillable PDF files, make sure you extract dropdown options. 
+        Detect repeating sections and mark them accordingly.
+        A table is usually a repeating section.
 
-        Omit any sections clearly marked "For Office Use Only", "For Administrative Use", "For Agency Use" or similar administrative purposes.
-
-        Make sure to consider the following rules to extract input fields and types:
+        The possible output fields for the JSON are as follows:
         1. **Address**: address (e.g., residential, work, mailing). Unit, city, zip code, street, municipality, county, district etc are included. Please collate them into a single field.
         2. **Currency**: Currency values with decimal separators (e.g., income, debts).
-        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option. Options cannot be empty strings.
+        3. **Checkbox**: Allows multiple selections (e.g., ethnicity, available benefits, languages spoken etc). Collate options for checkboxes as one field of "checkbox" type if possible. Checkbox options must be unique. Every checkbox must have at least one option. Options cannot be empty strings.
         4. **Date**: Captures dates (e.g., birth date, graduation date, month, year etc).
         5. **Email**: email address. Please collate domain and username if asked separately.
         6. **File Upload**: File attachments (e.g., PDFs, images)
@@ -74,11 +107,8 @@ class LLMPrompts:
         9. **Radio Button**: Single selection from short lists (<=7 items, e.g., Yes/No questions). Every Radio Button questions must have at least two options.
         10. **Text**: Open-ended text field for letters, alphanumerics, or symbols.
         11. **Phone**: phone numbers.
-        12.  If you see a field you do not understand, please use "unknown" as the type, associate relevant text as help text and assign a unique ID.
+        12.  If you see a field you do not understand, please use "unknown" as the type, associate nearby text as help text and assign a unique ID.
 
-        Output JSON structure should match this example:
-        {json.dumps(JSON_EXAMPLE, indent=4)}
-        
         Output only JSON, no explanations.
         """
         return prompt
@@ -126,10 +156,11 @@ class LLMPrompts:
         7. If necessary, create an additional new section with ONE fileupload field for text/checkbox fields that can be file attachments.
         8. Every section must have a title.
         9. Remove any fields for social security numbers or passwords.
-        10. Condense each help text to no more than 100 characters. 
+        10. Condense each help text to no more than 400 characters. 
         11. Remove the section if there are no fields in it.
         12. Every Radio Button question must have at least two options.
         13. Every checkbox question must have at least one option.
+        14. Every checkbox and radio button question should have some help text.
         
         Output JSON structure should match this example:
         {json.dumps(JSON_EXAMPLE, indent=4)}

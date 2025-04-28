@@ -1,5 +1,3 @@
-# from google import genai
-# from google.genai import types
 from pathlib import Path
 import json
 import llm_lib as llm

@@ -37,7 +37,8 @@ def calculate_score(json_golden, json):
     Returns:
       A number from 0.0 to 1.0 indicating fidelity of the JSON to the golden.
     """
-    # A silly placeholder metric: compare JSON lengths.
+    # TODO(9975): Replace this silly placeholder scoring with a more meaningful
+    # set of metrics.
     if len(json_golden) > len(json):
         return len(json) / len(json_golden)
     else:

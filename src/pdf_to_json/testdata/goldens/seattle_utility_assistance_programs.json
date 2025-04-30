@@ -1,7 +1,7 @@
 {
     "program" : {
       "id" : 2775,
-      "adminName" : "Utility Discount Program",
+      "adminName" : "utility-discount-program",
       "adminDescription" : "This is a mirror of the current UAP application hosted on UAPA. This test is for the purposes of mapping the integration. 4.2.25. ",
       "externalLink" : "https://utilityassistance.seattle.gov/",
       "displayMode" : "PUBLIC",

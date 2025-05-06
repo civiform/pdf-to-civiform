@@ -19,9 +19,8 @@ class TestExtractQuestions(unittest.TestCase):
 
     def setUp(self):
         testfile = 'testdata/goldens/charlotte_leadsafe.json'
-        # Charlotte must be using Windows, which annoyingly includes a
-        # BOM (Byte Order Mark) when exporting JSON. That's why we need
-        # to use encoding = 'utf-8-sig' below.
+        # Windows includes a BOM (Byte Order Mark) when exporting JSON.
+        # That's why we need to use encoding = 'utf-8-sig' below.
         try:
             with open(testfile, 'r', encoding = 'utf-8-sig') as f:
                 self.json = json.load(f)

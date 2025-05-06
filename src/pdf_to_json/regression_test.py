@@ -12,10 +12,12 @@ import os
 from pathlib import Path
 import regression_test_rules as rules
 
-# Weights should always sum to 1.0.
+logging.basicConfig(level=logging.INFO)
+
+# Weights will be normalized so that they sum to 1.0.
 # Rules can be turned off by assigning them a weight of 0.0.
 RULE_WEIGHTS = {'rule_json_length': 0.0,
-                'rule_number_of_questions': 0.5,
+                'rule_number_of_questions': 1.0,
                 'rule_correct_field_types': 0.5,
                 }
 
@@ -37,6 +39,21 @@ def parse_arguments():
     return(parser.parse_args())
 
 
+def normalize_weights(rule_weights):
+    """ Ensure that weights sum to 1.0.
+
+    Mutates the input.
+
+    Args:
+      rule_weights: a dict mapping names of rules to floating point weights.
+    """
+    sum = 0.0
+    for (rule, weight) in rule_weights.items():
+        sum += weight
+
+    for (rule, weight) in rule_weights.items():
+        rule_weights[rule] = weight / sum
+    
 def calculate_score(json_golden, json):
     """ Calculate the fidelity of the LLM-generated JSON to the golden JSON.
 
@@ -50,6 +67,7 @@ def calculate_score(json_golden, json):
     score = 0
     json_golden_str = str(json_golden)
     json_str = str(json)
+    normalize_weights(RULE_WEIGHTS)
     for (rule, weight) in RULE_WEIGHTS.items():
         if weight == 0.0:
             continue

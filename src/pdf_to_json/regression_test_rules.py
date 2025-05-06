@@ -18,14 +18,31 @@ def rule_json_length(json_golden, json):
 
 
 def score_missed_questions(num_json_questions, num_golden_questions):
-    """ Score the number of missed questions. """
+    """ Score the number of missed questions.
+
+    Let J be the number of questions in the JSON to be evaluated,
+    and G the number of questions in the golden JSON.
+
+    We want the score to be proportional to J/G, and inversely
+    proportional to G-J. Our metric multiplies these two expressions:
+    J / G(G-J)
+    """
     return (num_json_questions /
             (num_golden_questions *
              (num_golden_questions - num_json_questions)))
 
 
 def score_extra_questions(num_json_questions, num_golden_questions):
-    """ Score the number of extra questions. """
+    """ Score the number of extra questions.
+
+    We want the score for the number of extra questions to be symmetrical
+    to the score for missed questions. (Weights are applied later to
+    punish missed questions more than extra questions.)
+
+    That symmetry comes from substituting 2G - J for J
+    into the score for missed questions. Factoring reduces that to:
+    (J-2G) / G(G-J)
+    """
     return ((num_json_questions - 2 * num_golden_questions) /
             (num_golden_questions *
              (num_golden_questions - num_json_questions)))

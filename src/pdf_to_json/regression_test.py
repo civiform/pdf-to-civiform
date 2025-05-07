@@ -6,19 +6,22 @@ See https://github.com/civiform/civiform/issues/9975:
 
 import argparse
 import glob
+import json
 import llm_lib as llm
 import logging
 import os
 from pathlib import Path
 import regression_test_rules as rules
+import subprocess
+import sys
 
 logging.basicConfig(level=logging.INFO)
 
 # Weights will be normalized so that they sum to 1.0.
 # Rules can be turned off by assigning them a weight of 0.0.
-RULE_WEIGHTS = {'rule_json_length': 0.0,
-                'rule_number_of_questions': 1.0,
-                'rule_correct_field_types': 0.5,
+RULE_WEIGHTS = {'rule_json_length': 0.1,
+                'rule_number_of_questions': 0.6,
+                'rule_correct_field_types': 0.3,
                 }
 
 def parse_arguments():
@@ -54,25 +57,23 @@ def normalize_weights(rule_weights):
     for (rule, weight) in rule_weights.items():
         rule_weights[rule] = weight / sum
     
-def calculate_score(json_golden, json):
+def calculate_score(json_golden_str, json_eval_str):
     """ Calculate the fidelity of the LLM-generated JSON to the golden JSON.
 
     Args:
-      json_golden: the known-good JSON, as bytes.
-      json: the JSON to be evaluated, as bytes.
+      json_golden_str: the known-good JSON, as a string.
+      json_eval_str: the JSON to be evaluated, as a string.
 
     Returns:
       A number from 0.0 to 1.0 indicating fidelity of the JSON to the golden.
     """
     score = 0
-    json_golden_str = str(json_golden)
-    json_str = str(json)
     normalize_weights(RULE_WEIGHTS)
     for (rule, weight) in RULE_WEIGHTS.items():
         if weight == 0.0:
             continue
         logging.info(f"\tChecking {rule} with weight {weight}")
-        eval_string = 'rules.' + rule + '(json_golden_str, json_str)'
+        eval_string = 'rules.' + rule + '(json_golden_str, json_eval_str)'
         score += weight * eval(eval_string)
     return score
 
@@ -92,16 +93,42 @@ def regression_test(llm_client, directory):
     scores = {}
     for pdf in pdfs:
         (root, _) = os.path.splitext(pdf)
+
+        # Ignore PDFs for which we don't have corresponding JSON.
         if root + '.json' in jsons:
-            pdf_filepath = Path(pdf)
-            logging.info('Evaluating', pdf_filepath)
-            pdf_string = pdf_filepath.read_bytes()
+
+            logging.info(f"Evaluating {root}")
+
             json_filepath = Path(root + '.json')
-            json_string = json_filepath.read_bytes()
-            json = llm.process_pdf_text_with_llm(
-                llm_client, args.model, pdf_string,
-                'pdf_civiform_regression_test', '/tmp')[0]
-            scores[root] = calculate_score(json_string, json)
+            json_golden_str = json_filepath.read_text()
+
+            # Run the pipeline.
+            subprocess.run(['python3', './pdf_to_civiform_gemini.py',
+                            '--input-file', pdf])
+
+            # TODO(orwant): Fix pdf_to_civiform_gemini to take
+            # work directories & filenames as arguments. Otherwise,
+            # we have to do this:
+            work_dir = os.path.expanduser("~/pdf_to_civiform")
+            default_upload_dir = os.path.join(work_dir, 'uploads')
+            output_json_dir = os.path.join(work_dir, "output-json")
+
+            # pdf_to_civiform_gemini should also provide a way to
+            # return the filepath of the generated Civiform JSON. Instead,
+            # we have to duplicate its logic here.
+            # TODO(orwant): Fix this.
+            filename = os.path.basename(pdf)
+            base_name, _ = os.path.splitext(filename)
+            base_name = base_name[:15]
+            output_suffix = f"civiform-{args.model}"
+            eval_filename = os.path.join(
+                output_json_dir, f"{base_name}-{output_suffix}.json")
+
+            pipeline_file = open(eval_filename, 'r')
+            json_eval_str = pipeline_file.read()
+
+            scores[root] = calculate_score(json_golden_str, json_eval_str)
+            logging.info(f"Score for {root}: {scores[root]}")
         else:
             logging.warning(f"No JSON found for {pdf}")
     return scores
@@ -115,7 +142,7 @@ def display_scores(scores):
     """
     for pdf, score in scores.items():
         basename = os.path.basename(pdf)
-        print(f"{basename}: {score}")
+        print(f"{basename}: ", "{:.2f}".format(score))
 
 
 if __name__ == '__main__':

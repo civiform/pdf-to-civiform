@@ -14,8 +14,6 @@ import traceback # Import the traceback module
 import sys
 import argparse # Import argparse
 
-PAGE_LIMIT=5
-
 
 # This script extracts text from uploaded PDF files, uses Gemini LLM to
 # convert the text into structured JSON representing a form, formats the JSON
@@ -66,36 +64,6 @@ except (ValueError, OSError) as e:
     logging.error(f"Failed to setup required directories based on '~/pdf_to_civiform'. " \
           f"Check path and permissions. Error: {e}", file=sys.stderr)
     sys.exit(f"Startup failed: Directory setup error.")
-
-def fix_malformed_json(json_str, client, model_name):
-    try:
-        json.loads(json_str)
-        return json_str.strip()
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
-        # Attempt to fix by adding missing closing brackets/braces
-        fix_malformed_json = LLMPrompts.fix_malformed_json_prompt(json_str)
-        fixed_json_str = client.models.generate_content(model=model_name, contents=[fix_malformed_json])
-        fixed_json_str = fixed_json_str.text.strip("`").lstrip("json")
-        try:
-            json.loads(fixed_json_str)
-            return fixed_json_str.strip()
-        except json.JSONDecodeError:
-            print("Failed to auto-fix JSON. Manual review needed.")
-            return None
-
-def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
-    """Extracts a range of pages and returns them as bytes."""
-    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
-    new_doc = pymupdf.open()
-
-    for page_num in range(start_page, end_page):
-        if page_num < len(doc):
-            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-
-    return new_doc.write()
-
-
 
 
 def format_json_single_line_fields(json_string: str) -> str:

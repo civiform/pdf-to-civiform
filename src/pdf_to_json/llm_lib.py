@@ -6,6 +6,9 @@ import logging
 import os
 import pymupdf
 import re
+import traceback
+
+PAGE_LIMIT=5
 
 def initialize_gemini_model(
     model_name="gemini-2.0-flash",
@@ -57,6 +60,34 @@ def initialize_gemini_model(
 def get_pdf_page_count(pdf_bytes):
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     return len(doc)
+
+def extract_pages_as_bytes(pdf_bytes, start_page, end_page):
+    """Extracts a range of pages and returns them as bytes."""
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    new_doc = pymupdf.open()
+
+    for page_num in range(start_page, end_page):
+        if page_num < len(doc):
+            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+
+    return new_doc.write()
+
+def fix_malformed_json(json_str, client, model_name):
+    try:
+        json.loads(json_str)
+        return json_str.strip()
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+        # Attempt to fix by adding missing closing brackets/braces
+        fix_malformed_json = LLMPrompts.fix_malformed_json_prompt(json_str)
+        fixed_json_str = client.models.generate_content(model=model_name, contents=[fix_malformed_json])
+        fixed_json_str = fixed_json_str.text.strip("`").lstrip("json")
+        try:
+            json.loads(fixed_json_str)
+            return fixed_json_str.strip()
+        except json.JSONDecodeError:
+            print("Failed to auto-fix JSON. Manual review needed.")
+            return None
 
 def process_pdf_text_with_llm(client, model_name, file, base_name, work_dir):
     """Sends extracted PDF text to Gemini and asks it to format the content into structured JSON."""

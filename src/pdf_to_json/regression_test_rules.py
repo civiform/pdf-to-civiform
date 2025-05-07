@@ -9,12 +9,12 @@ These are called by regression_test() in regression_test.py.
 
 import json
 
-def rule_json_length(json_golden, json):
+def rule_json_length(json_golden_str, json_eval_str):
     """ A placeholder rule that compares JSON lengths. Don't use it! """
-    if len(json_golden) > len(json):
-        return len(json) / len(json_golden)
+    if len(json_golden_str) > len(json_eval_str):
+        return len(json_eval_str) / len(json_golden_str)
     else:
-        return len(json_golden) / len(json)
+        return len(json_golden_str) / len(json_eval_str)
 
 
 def score_missed_questions(num_json_questions, num_golden_questions):
@@ -48,14 +48,23 @@ def score_extra_questions(num_json_questions, num_golden_questions):
              (num_golden_questions - num_json_questions)))
 
 
-def rule_number_of_questions(json_golden, json):
-    """ Compares the number of questions in the JSONs. """
+def rule_number_of_questions(json_golden_str, json_eval_str):
+    """ Compares the number of questions in the JSONs.
+
+    Args:
+      json_golden_str: A JSON string of the golden CiviForm. 
+      json_eval_str: A JSON string of the CiviForm to be evaluated.
+
+    Returns:
+      Float in [0.0, 1.0] indicating the fidelity of the JSON to be evaluated.
+    """
     missed_question_penalty = 1.0
     extraneous_question_penalty = 0.1
+
     # We count occurrences of "questionText" to determine the number
     # of questions in the JSON.
-    num_golden_questions = json_golden.count('questionText')
-    num_json_questions = json.count('questionText')
+    num_golden_questions = json_golden_str.count('questionText')
+    num_json_questions = json_eval_str.count('questionText')
 
     if num_golden_questions == num_json_questions:
         score = 1.0
@@ -101,8 +110,8 @@ def extract_questions(json_obj):
     return questions
 
 
-def rule_correct_field_types(json_golden, json):
-    golden_questions = extract_questions(json_golden)
-    json_questions = extract_questions(json)
+def rule_correct_field_types(json_golden_str, json_eval_str):
+    golden_questions = extract_questions(json.loads(json_golden_str))
+    json_questions = extract_questions(json.loads(json_eval_str))
     # TODO(orwant): Implement this.
     return 0.5

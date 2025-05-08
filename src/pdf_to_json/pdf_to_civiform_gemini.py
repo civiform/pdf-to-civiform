@@ -152,7 +152,7 @@ def process_file(file_full, model_name, client):
             formated_json, base_name, f"formated-{model_name}", output_json_dir)
 
         post_processed_json = llm.post_processing_llm(
-            client, model_name, formated_json, base_name)
+            client, model_name, formated_json, base_name, output_json_dir)
         if post_processed_json is None:
             raise Exception(f"LLM post-processing failed for file: {file_full}")
 

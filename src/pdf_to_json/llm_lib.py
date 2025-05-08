@@ -253,7 +253,7 @@ def chunk_text(text, base_name, model_name):
       chunks.append(chunk)
     return chunks
 
-def post_processing_llm(client, model_name, text, base_name):
+def post_processing_llm(client, model_name, text, base_name, output_json_dir):
     """Sends extracted json text to Gemini and asks it to collate related fields into appropriate civiform types, in particular names and address."""
     prompt_post_processing_json = LLMPrompts.post_process_json_prompt(text)
 
@@ -289,7 +289,7 @@ def post_processing_llm(client, model_name, text, base_name):
 
         result=json.dumps(aggregated_responses, ensure_ascii=False, indent=4)
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-          llm.save_response_to_file(result, base_name, f"post-processed-{model_name}", output_json_dir)
+          save_response_to_file(result, base_name, f"post-processed-{model_name}", output_json_dir)
         return result  # Return as a formatted JSON string
 
 

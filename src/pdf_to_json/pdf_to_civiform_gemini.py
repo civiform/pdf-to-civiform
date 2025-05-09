@@ -472,6 +472,11 @@ if __name__ == '__main__':
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
         help='Set the logging level for console output in command-line mode.'
         )
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=7000,
+        )
 
     args = parser.parse_args()
 
@@ -528,4 +533,5 @@ if __name__ == '__main__':
         # No --input-file provided, run the Flask app
         logging.info("--- Running in Web Server Mode ---")
         logging.info(f"Starting Flask server...")
-        app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 7000)))
+        app.run(debug=True, host="0.0.0.0",
+                port=int(os.environ.get("PORT", args.port)))

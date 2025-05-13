@@ -10,7 +10,7 @@ def parse_arguments():
         description='Counts the occurrences of words in a JSON corpus')
 
     parser.add_argument('-c', '--corpus', default = '../corpus')
-    parser.add_argument('-t', '--threshold', default = 1)
+    parser.add_argument('-t', '--threshold', type = int, default = 1)
 
     return(parser.parse_args())
 
@@ -32,7 +32,7 @@ def display_dictionary(dictionary, threshold):
 
 def main():
     args = parse_arguments()
-    dictionary = gwc.compute_frequencies(args.corpus)
+    dictionary = gwc.compute_frequencies({}, args.corpus)
     display_dictionary(dictionary, args.threshold)
 
 

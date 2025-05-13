@@ -32,15 +32,16 @@ def find_best_text(question):
         return ''
 
 
-def add_question_words_to_dict(questions, dictionary):
-    """ Given a list of questions, builds up dictionary with their counts.
+def extract_question_words(questions):
+    """ Given a list of questions, creates dictionary with their counts.
 
     Args:
       questions: A list of JSON question objects.
-      dictionary: A dictionary mapping words to their occurrences.
 
-    Mutates dictionary.
+    Returns:
+      A dictionary mapping words to their occurrences.
     """
+    dictionary = {}
     for question in questions:
         text = find_best_text(question).lower()
 
@@ -60,6 +61,7 @@ def add_question_words_to_dict(questions, dictionary):
             else:
                 dictionary[word] = 1
 
+    return dictionary
 
 def display_dictionary(dictionary, threshold):
     """ Displays the terms and their occurrences in descending order.
@@ -76,20 +78,31 @@ def display_dictionary(dictionary, threshold):
         print(f"{word}: {count}")
 
 
-def compute_frequencies(directory):
+def merge_dictionaries(dict1, dict2):
+    for (word, count) in dict1.items():
+        if word in dict2:
+            dict1[word] += dict2[word]
+    for (word, count) in dict2.items():
+        if word not in dict1:
+            dict1[word] = dict2[word]
+    return dict1
+
+
+def compute_frequencies(dictionary, directory):
     """ Build a dictionary of term occurrences in a corpus.
 
     Recursively descend through the corpus, looking for JSON.
     
     Args:
+      dictionary: A dict mapping terms to counts.
       directory: The relative filepath to a JSON corpus.
     """
     entries = os.listdir(directory)
-    dictionary = {}
 
     for entry in entries:
         if os.path.isdir(os.path.join(directory, entry)):
-            compute_frequencies(directory + '/' + entry)
+            dictionary = compute_frequencies(
+                dictionary, directory + '/' + entry)
         elif os.path.isfile(os.path.join(directory, entry)):
 
             # The "len(entry) - 5" is to ensure that we don't evaluate
@@ -113,10 +126,12 @@ def compute_frequencies(directory):
                         continue
 
                     if 'questions' in json_obj:
-                        add_question_words_to_dict(json_obj['questions'],
-                                                   dictionary)
+                        dictionary = merge_dictionaries(
+                            dictionary,
+                            extract_question_words(json_obj['questions'])
                     else:
                         logging.warning(f"No questions found for {entry}")
+
     return dictionary
 
 

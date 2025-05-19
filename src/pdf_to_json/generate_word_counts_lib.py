@@ -128,7 +128,7 @@ def compute_frequencies(dictionary, directory):
                     if 'questions' in json_obj:
                         dictionary = merge_dictionaries(
                             dictionary,
-                            extract_question_words(json_obj['questions'])
+                            extract_question_words(json_obj['questions']))
                     else:
                         logging.warning(f"No questions found for {entry}")
 

@@ -19,9 +19,10 @@ logging.basicConfig(level=logging.INFO)
 
 # Weights will be normalized so that they sum to 1.0.
 # Rules can be turned off by assigning them a weight of 0.0.
-RULE_WEIGHTS = {'rule_json_length': 0.1,
-                'rule_number_of_questions': 0.6,
+RULE_WEIGHTS = {'rule_json_length': 0.0,
+                'rule_number_of_questions': 0.2,
                 'rule_correct_field_types': 0.3,
+                'rule_help_text_similarity': 0.5,
                 }
 
 def parse_arguments():

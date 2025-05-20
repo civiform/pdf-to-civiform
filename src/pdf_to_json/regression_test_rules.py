@@ -8,6 +8,9 @@ These are called by regression_test() in regression_test.py.
 """
 
 import json
+# "pip install scikit-learn" to install these.
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 def rule_json_length(json_golden_str, json_eval_str):
     """ A placeholder rule that compares JSON lengths. Don't use it! """
@@ -110,8 +113,55 @@ def extract_questions(json_obj):
     return questions
 
 
+
 def rule_correct_field_types(json_golden_str, json_eval_str):
     golden_questions = extract_questions(json.loads(json_golden_str))
     json_questions = extract_questions(json.loads(json_eval_str))
     # TODO(orwant): Implement this.
     return 0.5
+
+
+def extract_question_texts(json_str):
+    questions = extract_questions(json.loads(json_str))
+    result = []
+    for question in questions:
+        if 'config' in question:
+            if ('questionText' in question['config'] and
+                'translations' in question['config']['questionText'] and
+                'en_US' in question['config']['questionText']['translations']):
+                result.append(
+                    question['config']['questionText']
+                    ['translations']['en_US'])
+            elif 'description' in question['config']:
+                result.append(question['config']['description'])
+    return result
+
+def rule_help_text_similarity(json_golden_str, json_eval_str):
+    # First, extract the question texts.
+    questions_golden = extract_question_texts(json_golden_str)
+    questions_eval = extract_question_texts(json_eval_str)
+
+    if len(questions_golden) == 0 or len(questions_eval) == 0:
+        return 0.0
+
+    questions_joint = questions_golden + questions_eval
+
+    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_vectorizer.fit_transform(questions_joint)
+    tfidf_matrix_golden = tfidf_vectorizer.transform(questions_golden)
+    tfidf_matrix_eval= tfidf_vectorizer.transform(questions_eval)
+
+    # Compute the similarity matrix.
+    similarity_matrix = cosine_similarity(
+        tfidf_matrix_golden, tfidf_matrix_eval)
+
+    # Average the highest scores.
+    sum = 0.0
+    for i in range(len(similarity_matrix)):
+        highest = 0.0
+        for j in range(len(similarity_matrix[0])):
+            if similarity_matrix[i][j] > highest:
+                highest = similarity_matrix[i][j]
+        sum += highest
+
+    return(sum / len(similarity_matrix))

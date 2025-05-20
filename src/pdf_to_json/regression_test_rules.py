@@ -12,13 +12,6 @@ import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-def rule_json_length(json_golden_str, json_eval_str):
-    """ A placeholder rule that compares JSON lengths. Don't use it! """
-    if len(json_golden_str) > len(json_eval_str):
-        return len(json_eval_str) / len(json_golden_str)
-    else:
-        return len(json_golden_str) / len(json_eval_str)
-
 
 def score_missed_questions(num_json_questions, num_golden_questions):
     """ Score the number of missed questions.
@@ -26,10 +19,23 @@ def score_missed_questions(num_json_questions, num_golden_questions):
     Let J be the number of questions in the JSON to be evaluated,
     and G the number of questions in the golden JSON.
 
+    G must be greater than J.
+
     We want the score to be proportional to J/G, and inversely
     proportional to G-J. Our metric multiplies these two expressions:
-    J / G(G-J)
+    J / G(G-J).
+
+    Args:
+      num_json_questions: The number of questions in the evaluation JSON.
+      num_golden_questions: The number of questions in the golden JSON.
+
+    Returns:
+      Float in [0.0, 1.0] indicating the fidelity of the JSON to be evaluated.
     """
+    if num_json_questions >= num_golden_questions:
+        logging.error(
+            "score_missed_questions called with no missing questions")
+    
     return (num_json_questions /
             (num_golden_questions *
              (num_golden_questions - num_json_questions)))
@@ -45,7 +51,18 @@ def score_extra_questions(num_json_questions, num_golden_questions):
     That symmetry comes from substituting 2G - J for J
     into the score for missed questions. Factoring reduces that to:
     (J-2G) / G(G-J)
+    
+    Args:
+      num_json_questions: The number of questions in the evaluation JSON.
+      num_golden_questions: The number of questions in the golden JSON.
+
+    Returns:
+      Float in [0.0, 1.0] indicating the fidelity of the JSON to be evaluated.
     """
+    if num_json_questions < num_golden_questions:
+        logging.error(
+            "score_extra_questions called with no extra questions")
+        
     return ((num_json_questions - 2 * num_golden_questions) /
             (num_golden_questions *
              (num_golden_questions - num_json_questions)))
@@ -94,7 +111,7 @@ def same_question(question1, question2):
       question2: JSON of the second question.
 
     Returns:
-      Float between 0.0 and 1.0 indicating similarity.
+      Float in [0.0, 1.0] indicating similarity.
     """
     # TODO(orwant): Implement this.
     return 0.5
@@ -115,6 +132,14 @@ def extract_questions(json_obj):
 
 
 def rule_correct_field_types(json_golden_str, json_eval_str):
+    """
+    Args:
+      json_golden_str: A JSON string of the golden program.
+      json_eval_str: A JSON string of the program to be evaluated.
+
+    Returns:
+      Float in [0.0, 1.0] indicating the similarity of the question texts.
+    """
     golden_questions = extract_questions(json.loads(json_golden_str))
     json_questions = extract_questions(json.loads(json_eval_str))
     # TODO(orwant): Implement this.
@@ -122,6 +147,14 @@ def rule_correct_field_types(json_golden_str, json_eval_str):
 
 
 def extract_question_texts(json_str):
+    """ Given JSON, extract the most informative question text.
+    
+    Args:
+      json_str: A JSON string of a program.
+
+    Returns:
+      A list of question (or description) strings.
+    """
     questions = extract_questions(json.loads(json_str))
     result = []
     for question in questions:
@@ -137,6 +170,36 @@ def extract_question_texts(json_str):
     return result
 
 def rule_help_text_similarity(json_golden_str, json_eval_str):
+    """ Compute the similarity of the help texts in two programs.
+
+    This rule compares the help texts of two programs. Often the
+    PDF->CiviForm pipeline will generate a different number of questions
+    than the "golden" CiviForm -- and even generate a different number
+    of questions from run to run.
+
+    We therefore need a way to establish a mapping between the questions
+    in the two programs. To do this, we create a TF-IDF embedding and use
+    the highest values in the similarity matrix to establish that mapping.
+
+    The similarity matrix has dimension N x M, where N is the number of
+    questions with text in the golden program, and M the number of questions
+    with text in the eval program. When the pipeline is operating
+    perfectly, that matrix will be the identity matrix, and so the return
+    value of this method will be 1.0.
+
+    When the pipeline is not perfect, it may generate a different number
+    of questions than the golden program. In that case the highest value
+    of the appropriate column in the matrix is the closest question, and
+    its magnitude indicates the similarity of the texts in those two
+    questions.
+
+    Args:
+      json_golden_str: A JSON string of the golden program.
+      json_eval_str: A JSON string of the program to be evaluated.
+
+    Returns:
+      Float in [0.0, 1.0] indicating the similarity of the question texts.
+    """
     # First, extract the question texts.
     questions_golden = extract_question_texts(json_golden_str)
     questions_eval = extract_question_texts(json_eval_str)
@@ -144,8 +207,12 @@ def rule_help_text_similarity(json_golden_str, json_eval_str):
     if len(questions_golden) == 0 or len(questions_eval) == 0:
         return 0.0
 
+    # Create a joint question corpus for TF-IDF calculations.
+    # If we knew that the number of questions in each program was the same,
+    # we wouldn't have to do this.
     questions_joint = questions_golden + questions_eval
 
+    # Create the embedding, ignoring English stopwords.
     tfidf_vectorizer = TfidfVectorizer(stop_words='english')
     tfidf_vectorizer.fit_transform(questions_joint)
     tfidf_matrix_golden = tfidf_vectorizer.transform(questions_golden)

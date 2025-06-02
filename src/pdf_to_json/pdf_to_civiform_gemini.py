@@ -29,7 +29,7 @@ import argparse # Import argparse
 # output files are stored in ~/pdf_to_civiform/output-json
 
 # --- Global Configuration ---
-DEFAULT_MODEL_NAME = "gemini-2.0-flash" # Default model used in initialize_gemini_model
+DEFAULT_MODEL_NAME = "gemini-2.0-flash"
 
 # Configure logging (Initial setup, level can be changed later via CLI)
 logging.basicConfig(
@@ -212,7 +212,7 @@ def upload_file():
         logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
         logging.info(f"Using model for request: {model_name}")
 
-        client = llm.initialize_gemini_model(model_name=model_name, api_key=gemini_api_key)
+        client = llm.initialize_gemini_client(api_key=gemini_api_key)
         if client is None:
             error_message = "Failed to initialize Gemini client. Check API key configuration and logs."
             logging.error(error_message)
@@ -415,7 +415,7 @@ def upload_directory():
         return jsonify({"error": "Invalid directory path.", "debug_log": debug_log}), 400
 
 
-    client = llm.initialize_gemini_model(model_name, api_key=gemini_api_key)
+    client = llm.initialize_gemini_client(api_key=gemini_api_key)
     if client is None:
         error_message = "Failed to initialize Gemini client. Check API key or file."
         logging.error(error_message)
@@ -499,10 +499,10 @@ if __name__ == '__main__':
             logging.error(f"Input file not found or is not a file: {input_path}")
             sys.exit(1) # Exit with error code
 
-        # Initialize Gemini Client using the specified model name
+        # Initialize Gemini Client.
         # API key is handled internally by the function (reading from file)
-        logging.info(f"Initializing Gemini client for model: {args.model_name}")
-        client = llm.initialize_gemini_model(model_name=args.model_name) # Pass only model name
+        logging.info(f"Initializing Gemini client")
+        client = llm.initialize_gemini_client()
         if client is None:
             logging.error("Failed to initialize Gemini client. Check API key file/access. Exiting.")
             sys.exit(1)

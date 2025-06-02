@@ -10,21 +10,20 @@ import traceback
 
 PAGE_LIMIT=5
 
-def initialize_gemini_model(
-    model_name="gemini-2.0-flash",
+def initialize_gemini_client(
     api_key=None,
     api_key_file=os.path.expanduser("~/google_api_key")):
     """
     Initializes and configures the Gemini GenerativeModel.
 
     Args:
-        model_name (str): The name of the Gemini model to use.
         api_key (str, optional): API key provided by the user. Defaults to None.
         api_key_file (str): The path to the file containing the Google API key.
 
     Returns:
         genai.Client: The initialized Gemini client.
     """
+
     try:
         loaded_api_key = None
         if api_key:

@@ -78,12 +78,13 @@ def calculate_score(json_golden_str, json_eval_str):
     return score
 
 
-def regression_test(llm_client, directory):
+def regression_test(llm_client, directory, model_name):
     """ Evaluate all of the PDF/JSON pairs in a directory.
 
     Args:
       llm_client: An initialized LLM object.
       directory: The name of the directory containing golden PDF/JSON pairs.
+      model_name: Name of the LLM to use (e.g., "gemini-2.0-flash")
 
     Returns:
       A dict mapping the PDF filepaths to their regression scores.
@@ -104,7 +105,9 @@ def regression_test(llm_client, directory):
 
             # Run the pipeline.
             subprocess.run(['python3', './pdf_to_civiform_gemini.py',
-                            '--input-file', pdf])
+                            '--input-file', pdf,
+                            '--model-name', model_name,
+                            ])
 
             # TODO(orwant): Fix pdf_to_civiform_gemini to take
             # work directories & filenames as arguments. Otherwise,
@@ -147,7 +150,7 @@ def display_scores(scores):
 
 if __name__ == '__main__':
     args = parse_arguments()
-    llm_client = llm.initialize_gemini_model(model_name = args.model)
-    scores = regression_test(llm_client, args.directory)
+    llm_client = llm.initialize_gemini_client()
+    scores = regression_test(llm_client, args.directory, args.model)
     display_scores(scores)
         

@@ -12,6 +12,11 @@ import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# When mapping questions from one program to another, this constant
+# is used to ensure that the questions aren't too far away.
+# The lower this constant, the more likely that a question close to
+# the beginning of one program will be mapped to a question at the end
+# of the other.
 _INDEX_PENALTY_EXPONENT = 0.9
 
 def score_missed_questions(num_json_questions, num_golden_questions):
@@ -174,7 +179,7 @@ def extract_question_texts(json_str):
 def generate_question_similarity_matrix(json_golden_str, json_eval_str):
     """ Generate the similarity matrix of questions in two programs.
 
-     The similarity matrix has dimension N x M, where N is the number of
+    The similarity matrix has dimension N x M, where N is the number of
     questions with text in the golden program, and M the number of questions
     with text in the eval program. When the pipeline is operating
     perfectly, that matrix will be the identity matrix, and so the return

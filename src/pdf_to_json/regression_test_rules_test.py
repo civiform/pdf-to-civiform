@@ -55,11 +55,20 @@ class TestRuleHelpTextSimilarity(unittest.TestCase):
             'testdata/goldens/seattle_homewise.json')
         self.business_str = read_file_into_string(
             'testdata/goldens/charlotte_business.json')
+        self.leadsafe_str = read_file_into_string(
+            'testdata/goldens/charlotte_leadsafe.json')
+        self.leadsafe_tweaked_str = read_file_into_string(
+            'testdata/programs/charlotte_leadsafe_question_tweak.json')
 
     def test_self_similarity(self):
         self.assertGreater(
             rules.rule_help_text_similarity(self.homerepair_str,
                                             self.homerepair_str), 0.99)
+    def test_high_similarity(self):
+        self.assertGreater(
+            rules.rule_help_text_similarity(self.leadsafe_str,
+                                            self.leadsafe_tweaked_str), 0.8)
+
     def test_medium_similarity(self):
         self.assertGreater(
             rules.rule_help_text_similarity(self.homerepair_str,
@@ -68,6 +77,26 @@ class TestRuleHelpTextSimilarity(unittest.TestCase):
         self.assertLess(
             rules.rule_help_text_similarity(self.homewise_str,
                                             self.business_str), 0.5)
-        
+
+
+class TestGenerateQuestionMapping(unittest.TestCase):
+
+    def setUp(self):
+        self.homerepair_str = read_file_into_string(
+            'testdata/goldens/seattle_home_repair_loan.json')
+        self.homewise_str = read_file_into_string(
+            'testdata/goldens/seattle_homewise.json')
+        self.tree_canopy_str = read_file_into_string(
+            'testdata/goldens/charlotte_tree_canopy.json')
+        self.leadsafe_str = read_file_into_string(
+            'testdata/goldens/charlotte_leadsafe.json')
+
+    def test_self_similarity(self):
+        (golden_to_eval, eval_to_golden) = (
+            rules.generate_question_mapping(self.homerepair_str,
+                                            self.homerepair_str))
+        self.assertEqual(golden_to_eval[0], 0)
+        self.assertEqual(golden_to_eval[15], 15)
+
 if __name__ == '__main__':
     unittest.main()

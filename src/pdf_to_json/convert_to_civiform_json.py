@@ -1,6 +1,7 @@
 import json
 import random
 import argparse
+import string
 import sys
 import os
 import uuid
@@ -57,6 +58,43 @@ def replace_field_types(data):
         return data
 
 
+def convert_to_base26(num):
+    """ Converts a positive integer to a string of letters.
+
+    Args:
+      num: A positive integer.
+
+    Returns:
+      String of letters corresponding to the integer, e.g., 10 = j, 100 = cv.
+    """
+    chars = []
+    while num > 0:
+        remainder = (num - 1) % 26
+        chars.append(string.ascii_lowercase[remainder])
+        num = (num - 1) // 26
+
+    return ''.join(reversed(chars))
+    
+
+def replace_numbers_in_string(s):
+    """ Replaces digits in a string with an alphabetic encoding.
+
+    Args:
+      s: A string, typically a field name.
+
+    Returns:
+      String with any digits (other than a solitary 0) converted to
+      a base 26 letter encoding.
+    """
+    while (re.search('[1-9]\d*', s)):
+        match = re.search('[1-9]\d*', s)
+        if match:
+            s = re.sub(match.group(0),
+                       convert_to_base26(int(match.group(0))), s)
+        else:
+            break
+    return s
+
 def create_question(field, question_id, enumerator_id=None):
     is_multioption = field["type"] in ["radio_button", "checkbox", "dropdown"]
     is_enumerator = field["type"] == "enumerator"
@@ -68,7 +106,7 @@ def create_question(field, question_id, enumerator_id=None):
             "fileupload" if is_fileupload else field["type"],
         "config":
             {
-                "name": field["id"],
+                "name": replace_numbers_in_string(field["id"]),
                 "description": field["label"],
                 "questionText":
                     {

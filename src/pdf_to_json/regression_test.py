@@ -32,12 +32,12 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(
         prog='regression_test',
-        description='Calculate quality improvement of PDF->CiviForm pipeline')
+        description='Calculate fidelity of PDF->CiviForm pipeline')
 
     parser.add_argument('-d', '--directory',
                         default = 'testdata/goldens')
     parser.add_argument('-m', '--model',
-                        default = 'gemini-2.0-flash')
+                        default = 'gemini-2.0-flash-lite')
 
     return(parser.parse_args())
 
@@ -101,7 +101,8 @@ def regression_test(llm_client, directory, model_name):
             logging.info(f"Evaluating {root}")
 
             json_filepath = Path(root + '.json')
-            json_golden_str = json_filepath.read_text()
+            with open(json_filepath, 'r', encoding = 'utf-8-sig') as f:
+                json_golden_str = f.read()
 
             # Run the pipeline.
             subprocess.run(['python3', './pdf_to_civiform_gemini.py',
@@ -127,8 +128,8 @@ def regression_test(llm_client, directory, model_name):
             eval_filename = os.path.join(
                 output_json_dir, f"{base_name}-{output_suffix}.json")
 
-            pipeline_file = open(eval_filename, 'r')
-            json_eval_str = pipeline_file.read()
+            with open(eval_filename, 'r', encoding = 'utf-8-sig') as f:
+                json_eval_str = f.read()
 
             scores[root] = calculate_score(json_golden_str, json_eval_str)
             logging.info(f"Score for {root}: {scores[root]}")

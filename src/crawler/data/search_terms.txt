@@ -1,0 +1,285 @@
+# Search terms, to be used both for search queries
+# and for deciding whether to download the results of search queries.
+#
+# Format:
+#   Everything after a # symbol is ignored.
+#   A hyphen at the beginning is a negative term.
+#   A plus at the beginning is a positive term.
+#   A double plus at the beginning is a very positive term.
+#
+# Note that Google's Custom Search Engine enforces a maximum of 32 words.
++ACA # Affordable Care Act
+++apply # TODO(orwant): verify this works as intended.
+++assistance
++benefit
+++CCAP # Child Care Assistance Program
++CHAMPVA # Civilian Health and Medical Program of the Department of Veterans Affairs
++CHIP # Children's Health Insurance Program
++COBRA
++CSFP # Commodity Supplemental Food Program
++D-SNAP # Disaster Supplemental Nutrition Assistance Program
+++FAFSA # Free Application for Federal Student Aid
++FASS # Financial Assistance and Social Services
++FDPIR # Food Distribution Program on Indian Reservations
++FEMA
++FMLA # Family and Medical Leave Act
++FHA # Federal Housing Administration
+++form
++GI Bill
++HCV # Housing Choice Voucher
++Head Start
++HIP # Housing Improvement Program
++HISA # Home Improvements and Structural Alterations
++Homeowner Assistance Fund
++Lifeline # Discounted telephone or internet service
++LIHEAP # Low Income Home Energy Assistance Program
++Medicaid
++Medicare
++National School Lunch Program
++NED # Non-elderly disabled voucher
++Public Service Loan Forgiveness
++RCSBP # Reserve Component Survivor Benefit Plan
++SBP # Survivor Benefit Plan
++School Breakfast Program
++Section 8
++SFMNP # Senior Farmers Market Nutrition Program
+++SNAP # Supplemental Nutrition Assistance Program
++Social Security
++Special Milk Program
++SSDI # Social Security Disability Insurance
+++SSI # Supplemental Security Income
++SSVF # Supportive Services for Veteran Families
++SUN Bucks # $120 per child during the summer to buy groceries
++SUN Meals # one or more free meals during summer break
+++TANF # Temporary Assistance for Needy Families
++Teacher Loan Forgiveness
++Ticket to Work # Free training for Social Security disability recipients
++Tribal HUD-VASH # rental and support services to Native American veterans
++TRICARE
++unemployment
++VRE # Veteran Readiness and Employment
++WAP # Weatherization Assistance Program
+++WIC # Special Supplemental Nutrition Program for Women, Infants, and Children
+-911
+-abbreviations
+-account
+-acknowledge
+-acknowledgement
+-acknowledgment
+-act
+-addendum
+-affidavit
+-affidavits
+-agenda
+-agreement
+-amended
+-amendment
+-amendments
+-announcement
+-announces
+-analysis
+-analyst
+-appeal
+-appeals
+-appendix
+-article
+-articles
+-attorney
+-authorization
+-ballot
+-bill
+-board
+-booklet
+-brochure
+-brokerage
+-budget
+-building
+-bylaws
+-ceremony
+-certificate
+-certificates
+-certification
+-chapter
+-charter
+-checklist
+-circuit
+-code
+-commission
+-committee
+-communications
+-complaint
+-concern
+-conditional
+-consolidated
+-contents
+-contest
+-contract
+-contractor
+-council
+-court
+-deed
+-defendants
+-deposit
+-development
+-director
+-directory
+-discussion
+-draft
+-docket
+-download
+-e-911
+-economics
+-election
+-electrician
+-exam
+-examination
+-fact
+-facts
+-faq
+-faqs
+-final
+-fiscal
+-flowchart
+-flyer
+-foia
+-force
+-freedom
+-frequently
+-future
+-growth
+-guidance
+-guide
+-guidebook
+-guidelines
+-handbook
+-handout
+-hearing
+-highway
+-historic
+-important
+-incorporation
+-information
+-informational
+-initiatives
+-inspection
+-inspections
+-inspector
+-instruction
+-instructions
+-inventory
+-investment
+-invitation
+-item
+-juror
+-jury
+-landscaping
+-learning
+-legend
+-legislative
+-legislature
+-letterhead
+-license
+-licenses
+-licensure
+-litigation
+-litigations
+-mailing
+-maintenance
+-management
+-manual
+-marriage
+-meeting
+-membership
+-memorandum
+-minutes
+-motion
+-news
+-newsletter
+-notary
+-note
+-notice
+-notices
+-oath
+-officials
+-ordinance
+-ordinances
+-overview
+-olympics
+-packet
+-pamphlet
+-parade
+-pardon
+-passport
+-passports
+-performer
+-permit
+-permits
+-permitting
+-plaintiffs
+-planning
+-please
+-plumber
+-police
+-policies
+-policy
+-political
+-procedure
+-procedures
+-proceedings
+-production
+-project
+-probate
+-proposal
+-proposals
+-purchasing
+-questions
+-register
+-regulation
+-regulations
+-release
+-report
+-reporting
+-reservation
+-resolution
+-resources
+-responsibilities
+-rfp
+-rights
+-roll
+-rules
+-scanned
+-schedule
+-seminar
+-sheriff
+-speaker
+-staff
+-standards
+-strategic
+-study
+-subcontract
+-subdivision
+-subpoena
+-summary
+-surveyor
+-teamsters
+-template
+-traffic
+-training
+-unlawful
+-unincorporated
+-untitled
+-update
+-variance
+-vending
+-vendor
+-volunteer
+-vote
+-voter
+-voting
+-webinar
+-welcome
+-wordperfect
+-worksheet
+-workshop
+-zoning
+

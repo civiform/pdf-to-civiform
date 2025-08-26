@@ -1,0 +1,5 @@
+Hawaii: https://www.hawaiicounty.gov/home
+Honolulu: http://www.honolulu.gov
+Kalawao: 
+Kauai: https://www.kauai.gov/
+Maui: https://www.mauicounty.gov/

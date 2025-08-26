@@ -1,0 +1,67 @@
+Alachua: https://alachuacounty.us/
+Baker: https://www.bakercountyfl.org/
+Bay: https://www.baycountyfl.gov/
+Bradford: http://www.bradfordcountyfl.gov/
+Brevard: https://brevardfl.gov/
+Broward: https://www.broward.org/
+Calhoun: https://www.calhouncountyfl.gov/
+Charlotte: http://www.charlottecountyfl.gov/
+Citrus: https://www.citrusbocc.com/
+Clay: http://www.claycountygov.com/
+Collier: http://www.colliercountyfl.gov/
+Columbia: http://www.columbiacountyfla.com/
+DeSoto: http://www.desotobocc.com/
+Dixie: https://www.visitdixie.com/
+Duval: https://www.coj.net/
+Escambia: https://myescambia.com/
+Flagler: http://www.flaglercounty.org/
+Franklin: https://www.franklincountyflorida.com/
+Gadsden: https://www.gadsdencountyfl.gov/
+Gilchrist: https://gilchrist.fl.us/
+Glades: https://www.myglades.com/
+Gulf: https://www.gulfcounty-fl.gov/
+Hamilton: https://hamiltoncountyfl.com/
+Hardee: https://www.hardeecountyfl.gov/
+Hendry: http://www.hendryfla.net/
+Hernando: http://www.hernandocounty.us/
+Highlands: https://www.highlandsfl.gov/
+Hillsborough: http://www.hillsboroughcounty.org
+Holmes: https://holmescountyfla.com/
+Indian River: https://indianriver.gov/
+Jackson: https://jacksoncountyfl.gov/
+Jefferson: http://www.jeffersoncountyfl.gov/
+Lafayette: https://lafayettecountyfl.org/
+Lake: https://www.lakecountyfl.gov/
+Lee: https://www.leegov.com/
+Leon: http://www.leoncountyfl.gov/
+Levy: https://www.levycounty.org/
+Liberty: https://libertycountyfl.org/
+Madison: https://madisoncountyfl.com/
+Manatee: http://www.mymanatee.org
+Marion: https://www.marionfl.org/
+Martin: https://www.martin.fl.us/
+Miami-Dade: http://www.miamidade.gov/
+Monroe: http://www.monroecounty-fl.gov/
+Nassau: http://www.nassaucountyfl.com/
+Okaloosa: https://myokaloosa.com/
+Okeechobee: https://www.okeechobeecountyfl.gov/
+Orange: https://www.orangecountyfl.net/
+Osceola: https://www.osceola.org/
+Palm Beach: http://www.co.palm-beach.fl.us/
+Pasco: https://www.pascocountyfl.net/
+Pinellas: http://www.pinellascounty.org
+Polk: http://www.polk-county.net/
+Putnam: https://main.putnam-fl.com/
+Santa Rosa: http://www.santarosa.fl.gov/
+Sarasota: https://www.scgov.net/
+Seminole: http://www.seminolecountyfl.gov/
+St. Johns: https://www.sjcfl.us/
+St. Lucie: https://www.stlucieco.gov/
+Sumter: https://www.sumtercountyfl.gov/
+Suwannee: https://suwanneecountyfl.gov/
+Taylor: https://www.taylorcountygov.com/
+Union: https://unioncounty-fl.gov/
+Volusia: http://www.volusia.org/
+Wakulla: https://www.mywakulla.com/
+Walton: https://www.mywaltonfl.gov/
+Washington: https://www.washingtonfl.com/

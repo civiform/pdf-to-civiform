@@ -131,6 +131,7 @@ def create_question(field, question_id, enumerator_id=None):
                     },
                 "id": question_id,
                 "universal": False,
+                "displayMode" : "VISIBLE",
                 "primaryApplicantInfoTags": []
             }
     }

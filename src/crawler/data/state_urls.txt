@@ -1,0 +1,56 @@
+Alabama: https://alabama.gov
+Alaska: https://www.alaska.gov
+American Samoa: https://www.americansamoa.gov
+Arizona: https://az.gov
+Arkansas: https://portal.arkansas.gov
+California: https://www.ca.gov
+Colorado: https://co.colorado.gov
+Connecticut: https://portal.ct.gov
+Delaware: https://delaware.gov
+District of Columbia: https://dc.gov
+Florida: http://www.fl.gov
+Georgia: https://georgia.gov
+Guam: https://guam.gov
+Hawaii: https://portal.ehawaii.gov
+Idaho: https://idaho.gov
+Illinois: https://www.illinois.gov
+Indiana: https://www.in.gov
+Iowa: https://www.iowa.gov
+Kansas: https://admin.ks.gov
+Kentucky: https://www.kentucky.gov
+Louisiana: https://www.louisiana.gov
+Maine: https://maine.gov
+Maryland: https://maryland.gov
+Massachusetts: https://mass.gov
+Michigan: https://www.michigan.gov
+Minnesota: https://mn.gov
+Mississippi: https://www.ms.gov
+Missouri: https://www.mo.gov
+Montana: https://mt.gov
+Nebraska: https://www.nebraska.gov
+Nevada: https://nv.gov
+New Hampshire: https://www.nh.gov
+New Jersey: https://www.nj.gov
+New Mexico: https://www.nm.gov
+New York: https://www.ny.gov
+North Carolina: https://www.nc.gov
+North Dakota: https://www.nd.gov
+Ohio: https://ohio.gov
+Oklahoma: https://oklahoma.gov
+Oregon: https://www.oregon.gov
+Pennsylvania: https://www.pa.gov
+Puerto Rico: https://www.statedepartment.pr.gov
+Rhode Island: https://www.ri.gov
+South Carolina: https://sc.gov
+South Dakota: https://www.sd.gov/cs
+Tennessee: https://www.tn.gov
+Texas: https://www.texas.gov
+U.S. Virgin Islands: https://www.vi.gov
+Utah: https://www.utah.gov
+Vermont: https://www.vermont.gov
+Virginia: https://www.virginia.gov
+Washington: https://wa.gov
+West Virginia: https://wv.gov
+Wisconsin: https://www.wisconsin.gov
+Wyoming: https://www.wyo.gov
+Northern Mariana Islands: http://gov.mp

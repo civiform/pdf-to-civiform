@@ -1,0 +1,8 @@
+Fairfield: https://portal.ct.gov/choosect/regions/fairfield
+Hartford: https://www.hartfordcounty.com/
+Litchfield: http://www.litchfieldcty.com/
+Middlesex: https://portal.ct.gov/choosect/regions/middlesex
+New Haven: https://portal.ct.gov/choosect/regions/new-haven
+New London: https://portal.ct.gov/choosect/regions/new-london
+Tolland: https://portal.ct.gov/choosect/regions/tolland
+Windham: https://www.windhamct.gov/

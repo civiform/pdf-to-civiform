@@ -3,9 +3,9 @@
 """ Download service forms from a government web site.
 
 Sample usages:
-  download_forms.py -s Maryland -a AIzaSyCfufDV_qQf8HoiULC3hC4Cc10M8GlqLHY -cse 729505ec2908a4c2c
-  download_forms.py -s Maryland -q "WIC OR SNAP OR TANF" -a AIzaSyCfufDV_qQf8HoiULC3hC4Cc10M8GlqLHY -cse 729505ec2908a4c2c
-  download_forms.py -s Maryland -u maryland.gov -q "WIC OR SNAP OR TANF -a AIzaSyCfufDV_qQf8HoiULC3hC4Cc10M8GlqLHY -cse 729505ec2908a4c2c
+  download_forms.py -s Maryland -a [MY_API_KEY] -cse [MY_CSE_ID]
+  download_forms.py -s Maryland -q "WIC OR SNAP OR TANF" -a [MY_API_KEY] -cse [MY_CSE_ID]
+  download_forms.py -s Maryland -u maryland.gov -q "WIC OR SNAP OR TANF -a [MY_API_KEY] -cse [MY_CSE_ID]
 
 Assumes a (possibly empty) corpus exists. You can create an empty corpus
 with create_corpus.py.

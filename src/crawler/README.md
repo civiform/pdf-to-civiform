@@ -18,8 +18,8 @@
 1. **Python Environment**: These scripts require Python 3.x.
 2. Install googleapiclient.discovery with `pip install google-api-python-client`.
 3. Create an API key for the Google Programmable/Custom Search Engine,
-e.g., `AIzaSyCfufDV_qQf8HoiULC3hC4Cc10M8GlqLHY`. See https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list.       
-4. Create a Custom Search Engine ID, e.g., `729505ec2908a4c2c`.
+See https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list.
+4. Create a Custom Search Engine ID.
 
 ### Create an empty corpus (in `./corpus`):
 

@@ -414,6 +414,7 @@ def convert_to_civiform_json(unprocessed_input_json):
                 "localizedSummaryImageDescription":
                     None,
                 "categories": [],
+                "bridgeDefinitions": {},
                 "applicationSteps":
                     [
                         {

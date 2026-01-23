@@ -88,10 +88,10 @@ def fix_malformed_json(json_str, client, model_name):
             print("Failed to auto-fix JSON. Manual review needed.")
             return None
 
-def process_pdf_text_with_llm(client, model_name, file, base_name, work_dir):
+def process_pdf_text_with_llm(client, model_name, file, base_name, work_dir, prompt_class=LLMPrompts):
     """Sends extracted PDF text to Gemini and asks it to format the content into structured JSON."""
 
-    prompt = LLMPrompts.pdf_to_json_prompt()
+    prompt = prompt_class.pdf_to_json_prompt()
     logging.info(f"LLM processing input txt extracted from PDF...")
 
     try:
@@ -252,9 +252,9 @@ def chunk_text(text, base_name, model_name):
       chunks.append(chunk)
     return chunks
 
-def post_processing_llm(client, model_name, text, base_name, output_json_dir):
+def post_processing_llm(client, model_name, text, base_name, output_json_dir, prompt_class=LLMPrompts):
     """Sends extracted json text to Gemini and asks it to collate related fields into appropriate civiform types, in particular names and address."""
-    prompt_post_processing_json = LLMPrompts.post_process_json_prompt(text)
+    prompt_post_processing_json = prompt_class.post_process_json_prompt(text)
 
     try:
         chunks = chunk_text(text, base_name, model_name)
@@ -266,7 +266,7 @@ def post_processing_llm(client, model_name, text, base_name, output_json_dir):
         else:
             api_model_name = model_name
         for i, chunk in enumerate(chunks):
-            prompt_post_processing_json = LLMPrompts.post_process_json_prompt(chunk)
+            prompt_post_processing_json = prompt_class.post_process_json_prompt(chunk)
 
             response = client.models.generate_content(
                 model=api_model_name,

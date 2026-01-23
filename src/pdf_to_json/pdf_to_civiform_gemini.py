@@ -9,6 +9,8 @@ import logging
 import re
 from convert_to_civiform_json import convert_to_civiform_json
 from LLM_prompts import LLMPrompts
+from LLM_prompts_de import LLMPrompts as LLMPromptsDE
+from LLM_prompts_de_better import LLMPrompts as LLMPromptsDEBetter
 from io import StringIO
 import traceback # Import the traceback module
 import sys
@@ -29,7 +31,7 @@ import argparse # Import argparse
 # output files are stored in ~/pdf_to_civiform/output-json
 
 # --- Global Configuration ---
-DEFAULT_MODEL_NAME = "gemini-2.0-flash"
+DEFAULT_MODEL_NAME = "gemini-2.5-pro"
 
 # Configure logging (Initial setup, level can be changed later via CLI)
 logging.basicConfig(
@@ -116,7 +118,7 @@ def format_json_single_line_fields(json_string: str) -> str:
         ) from e  # Raise a ValueError
 
 
-def process_file(file_full, model_name, client):
+def process_file(file_full, model_name, client, prompt_class=LLMPrompts):
     """
     Processes a single PDF file, extracts data, interacts with the LLM, and converts it to CiviForm JSON.
 
@@ -134,14 +136,19 @@ def process_file(file_full, model_name, client):
         # Extract the base filename without extension
         filename = os.path.basename(file_full)
         base_name, _ = os.path.splitext(filename)
-        base_name = base_name[:
-                              15]  # limit to 15 chars to avoid extremely long filenames
+        base_name = base_name[:15]  # limit to 15 chars to avoid extremely long filenames
+        
+        if prompt_class == LLMPromptsDE:
+             base_name = f"{base_name}-custom-prompt"
+        elif prompt_class == LLMPromptsDEBetter:
+             base_name = f"{base_name}-custom-better-prompt"
+             
         logging.info(f"Processing file: {file_full} ...")
 
         filepath = Path(file_full)
         file_bytes = filepath.read_bytes()
         structured_json, llm_error = llm.process_pdf_text_with_llm(
-            client, model_name, file_bytes, base_name, work_dir)
+            client, model_name, file_bytes, base_name, work_dir, prompt_class=prompt_class)
 
         if structured_json is None:
             raise Exception(f"LLM processing failed for file: {file_full}. Details: {llm_error}")
@@ -152,7 +159,7 @@ def process_file(file_full, model_name, client):
             formated_json, base_name, f"formated-{model_name}", output_json_dir)
 
         post_processed_json = llm.post_processing_llm(
-            client, model_name, formated_json, base_name, output_json_dir)
+            client, model_name, formated_json, base_name, output_json_dir, prompt_class=prompt_class)
         if post_processed_json is None:
             raise Exception(f"LLM post-processing failed for file: {file_full}")
 
@@ -219,8 +226,19 @@ def upload_file():
             debug_log = log_stream.getvalue()
             return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
+        # Determine prompt class
+        use_de_better = request.form.get('germanBetterPrompts') == 'true'
+        use_de = request.form.get('germanPrompts') == 'true'
+        
+        if use_de_better:
+            p_class = LLMPromptsDEBetter
+        elif use_de:
+            p_class = LLMPromptsDE
+        else:
+            p_class = LLMPrompts
+
         # Process the file
-        processing_result = process_file(file_full, model_name, client)
+        processing_result = process_file(file_full, model_name, client, prompt_class=p_class)
 
         # Get logs generated during processing
         debug_log = log_stream.getvalue()
@@ -310,7 +328,7 @@ def handle_convert_to_civiform():
         return jsonify({"error": error_message, "details": traceback.format_exc()}), 500
 
 
-def process_directory(directory, model_name, client):
+def process_directory(directory, model_name, client, prompt_class=LLMPrompts):
     """
     Processes all PDF files in a given directory and returns summary information.
     NOTE: This function currently does *not* return the individual JSON outputs,
@@ -351,7 +369,8 @@ def process_directory(directory, model_name, client):
             file_full = os.path.join(abs_directory, filename)
             file_results[filename] = {"success": False, "error_message": ""}
             try:
-                processing_output = process_file(file_full, model_name, client)
+                # Determine prompt class
+                processing_output = process_file(file_full, model_name, client, prompt_class=prompt_class)
                 if processing_output and processing_output.get("civiform_json"):
                     success_count += 1
                     file_results[filename]["success"] = True
@@ -422,8 +441,19 @@ def upload_directory():
         debug_log = log_stream.getvalue()
         return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
+    # Determine prompt class
+    use_de_better = request.form.get('germanBetterPrompts') == 'true'
+    use_de = request.form.get('germanPrompts') == 'true'
+    
+    if use_de_better:
+        p_class = LLMPromptsDEBetter
+    elif use_de:
+        p_class = LLMPromptsDE
+    else:
+        p_class = LLMPrompts
+
     try:
-        directory_result = process_directory(directory_path, model_name, client)
+        directory_result = process_directory(directory_path, model_name, client, prompt_class=p_class)
         debug_log = directory_result.get("debug_log", "No debug log captured.")
 
         response_data = {
@@ -477,6 +507,16 @@ if __name__ == '__main__':
         type=int,
         default=7000,
         )
+    parser.add_argument(
+        '--german-prompts',
+        action='store_true',
+        help='Use German-specific prompts for better extraction of German forms.'
+        )
+    parser.add_argument(
+        '--german-better-prompts',
+        action='store_true',
+        help='Use optimized German prompts for handling side-by-side data and tables.'
+        )
 
     args = parser.parse_args()
 
@@ -508,11 +548,19 @@ if __name__ == '__main__':
             sys.exit(1)
 
         # Process the single file
+        if args.german_better_prompts:
+            p_class = LLMPromptsDEBetter
+        elif args.german_prompts:
+            p_class = LLMPromptsDE
+        else:
+            p_class = LLMPrompts
+            
         try:
             result_dict = process_file(
                 file_full=input_path,
                 model_name=args.model_name, # Pass model name
-                client=client               # Pass initialized client
+                client=client,              # Pass initialized client
+                prompt_class=p_class
             )
             if result_dict and result_dict.get("civiform_json"):
                 logging.info(f"Successfully processed '{args.input_file}'.")

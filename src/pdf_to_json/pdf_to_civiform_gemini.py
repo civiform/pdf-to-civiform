@@ -116,17 +116,22 @@ def format_json_single_line_fields(json_string: str) -> str:
         ) from e  # Raise a ValueError
 
 
-def process_file(file_full, model_name, client):
+def process_file(file_full, model_name, client, extraction_mode='auto'):
     """
-    Processes a single PDF file, extracts data, interacts with the LLM, and converts it to CiviForm JSON.
+    Processes a single PDF file, extracts data, interacts with the LLM,
+    and converts it to CiviForm JSON.
 
     Args:
-        file_full (str): The full path to the PDF file.
-        model_name (str): The name of the LLM model to use.
-        client : The initialized Gemini client.
+        file_full (str):        The full path to the PDF file.
+        model_name (str):       The name of the LLM model to use.
+        client:                 The initialized Gemini client.
+        extraction_mode (str):  One of:
+                                  'auto'          — detect PDF type automatically
+                                  'ocr-vision'    — always use Cloud Vision OCR
+                                  'gemini-direct' — always use raw PDF bytes path
 
     Returns:
-        dict: A dictionary containing 'intermediary_json' and 'civiform_json' strings, or None if processing fails.
+        dict with 'intermediary_json', 'civiform_json', and 'ocr_metadata' keys.
     Raises:
         Exception: If LLM processing or post-processing fails.
     """
@@ -134,19 +139,49 @@ def process_file(file_full, model_name, client):
         # Extract the base filename without extension
         filename = os.path.basename(file_full)
         base_name, _ = os.path.splitext(filename)
-        base_name = base_name[:
-                              15]  # limit to 15 chars to avoid extremely long filenames
-        logging.info(f"Processing file: {file_full} ...")
+        base_name = base_name[:15]  # limit to 15 chars to avoid extremely long filenames
+        logging.info(f"Processing file: {file_full} (extraction_mode={extraction_mode}) ...")
 
         filepath = Path(file_full)
         file_bytes = filepath.read_bytes()
-        structured_json, llm_error = llm.process_pdf_text_with_llm(
-            client, model_name, file_bytes, base_name, work_dir)
+
+        # Translate UI extraction_mode into llm_lib flags
+        force_ocr = (extraction_mode == 'ocr-vision')
+        bypass_ocr = (extraction_mode == 'gemini-direct')
+
+        if bypass_ocr:
+            # Temporarily override detect_pdf_type to always return 'digital'
+            # so llm_lib takes the bytes path regardless of text layer
+            import ocr_lib
+            original_detect = ocr_lib.detect_pdf_type
+            ocr_lib.detect_pdf_type = lambda _: 'digital'
+
+        try:
+            structured_json, llm_error = llm.process_pdf_text_with_llm(
+                client, model_name, file_bytes, base_name, work_dir,
+                force_ocr=force_ocr
+            )
+        finally:
+            if bypass_ocr:
+                ocr_lib.detect_pdf_type = original_detect
 
         if structured_json is None:
             raise Exception(f"LLM processing failed for file: {file_full}. Details: {llm_error}")
 
-        logging.info(f"Formating json  .... ")
+        # Extract ocr_metadata before formatting (it's injected per-response dict)
+        try:
+            raw_list = json.loads(structured_json)
+            ocr_metadata = None
+            if isinstance(raw_list, list) and raw_list:
+                ocr_metadata = raw_list[0].pop('_extraction_metadata', None)
+            elif isinstance(raw_list, dict):
+                ocr_metadata = raw_list.pop('_extraction_metadata', None)
+            # Re-serialize after stripping metadata so it doesn't pollute downstream
+            structured_json = json.dumps(raw_list)
+        except Exception:
+            ocr_metadata = None
+
+        logging.info(f"Formatting json ...")
         formated_json = format_json_single_line_fields(structured_json)
         llm.save_response_to_file(
             formated_json, base_name, f"formated-{model_name}", output_json_dir)
@@ -156,7 +191,7 @@ def process_file(file_full, model_name, client):
         if post_processed_json is None:
             raise Exception(f"LLM post-processing failed for file: {file_full}")
 
-        logging.info(f"Formating post processed json  .... ")
+        logging.info(f"Formatting post processed json ...")
         formated_post_processed_json = format_json_single_line_fields(
             post_processed_json)
         llm.save_response_to_file(
@@ -169,14 +204,14 @@ def process_file(file_full, model_name, client):
             civiform_json, base_name, f"civiform-{model_name}", output_json_dir)
         logging.info(f"Done processing file: {file_full}")
 
-        # Return both the intermediary and CiviForm JSON
         return {
             "intermediary_json": formated_post_processed_json,
-            "civiform_json": civiform_json
+            "civiform_json": civiform_json,
+            "ocr_metadata": ocr_metadata,
         }
     except Exception as e:
         logging.error(f"Failed to process file {file_full}: {e}")
-        raise # Re-raise the exception to be caught in the route
+        raise  # Re-raise the exception to be caught in the route
 
 
 @app.route('/')
@@ -203,14 +238,15 @@ def upload_file():
         file.save(file_full)
         logging.info(f"File saved to: {file_full}")
 
-        # Get LLM model name, API key, and log level from the request
-        model_name = request.form.get('modelName', DEFAULT_MODEL_NAME) # Use default if not provided
+        # Get LLM model name, API key, log level, and extraction mode from the request
+        model_name = request.form.get('modelName', DEFAULT_MODEL_NAME)
         gemini_api_key = request.form.get('geminiApiKey')
         log_level_str = request.form.get('logLevel', 'INFO').upper()
+        extraction_mode = request.form.get('extractionMode', 'auto')  # 'auto' | 'ocr-vision' | 'gemini-direct'
         log_level = getattr(logging, log_level_str, logging.INFO)
         logging.getLogger().setLevel(log_level)
         logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
-        logging.info(f"Using model for request: {model_name}")
+        logging.info(f"Using model: {model_name}, extraction mode: {extraction_mode}")
 
         client = llm.initialize_gemini_client(api_key=gemini_api_key)
         if client is None:
@@ -220,7 +256,7 @@ def upload_file():
             return jsonify({"error": error_message, "debug_log": debug_log}), 500
 
         # Process the file
-        processing_result = process_file(file_full, model_name, client)
+        processing_result = process_file(file_full, model_name, client, extraction_mode=extraction_mode)
 
         # Get logs generated during processing
         debug_log = log_stream.getvalue()
@@ -233,10 +269,10 @@ def upload_file():
             logging.info(f"Successfully processed '{filename}' via upload.")
             logging.info(f"Length of intermediary json: {len(processing_result.get('intermediary_json', ''))}")
             logging.info(f"Length of civiform_json: {len(processing_result.get('civiform_json', ''))}")
-            # Return the dictionary containing both JSON strings
             response_data = {
                 "intermediary_json": processing_result.get("intermediary_json"),
                 "civiform_json": processing_result.get("civiform_json"),
+                "ocr_metadata": processing_result.get("ocr_metadata"),  # badge data for UI
             }
             return jsonify(response_data)
 

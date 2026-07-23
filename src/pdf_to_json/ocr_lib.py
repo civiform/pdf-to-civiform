@@ -46,6 +46,51 @@ MAX_OCR_PAGES = 20
 OCR_RENDER_DPI = 200
 
 
+# ── Vision client factory ──────────────────────────────────────────────────────
+
+def _build_vision_client():
+    """
+    Build a Vision ImageAnnotatorClient with explicit credentials.
+
+    Credential resolution order:
+      1. GOOGLE_APPLICATION_CREDENTIALS env var (standard ADC path)
+      2. ~/google_vision_key.json  (convenience path for local dev)
+
+    Raises:
+        RuntimeError with an actionable message if no credentials are found.
+    """
+    import os
+    from pathlib import Path
+
+    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+
+    if not creds_path:
+        fallback = Path.home() / "google_vision_key.json"
+        if fallback.exists():
+            creds_path = str(fallback)
+            logging.info(f"Vision: using credentials from fallback path: {creds_path}")
+        else:
+            raise RuntimeError(
+                "No Google Cloud credentials found for Cloud Vision API.\n"
+                "To fix, either:\n"
+                "  a) Set GOOGLE_APPLICATION_CREDENTIALS to a service account key JSON path, or\n"
+                "  b) Place a service account key at ~/google_vision_key.json\n\n"
+                "To create a key:\n"
+                "  gcloud iam service-accounts keys create ~/google_vision_key.json \\\n"
+                "    --iam-account=<SA_EMAIL> --project=<PROJECT_ID>\n"
+                "Then mount it into the container:\n"
+                "  -v ~/google_vision_key.json:/home/cf-user/google_vision_key.json:ro"
+            )
+
+    from google.oauth2 import service_account  # type: ignore
+    credentials = service_account.Credentials.from_service_account_file(
+        creds_path,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    logging.info(f"Vision: loaded credentials from {creds_path}")
+    return vision.ImageAnnotatorClient(credentials=credentials)
+
+
 # ── PDF type detection ─────────────────────────────────────────────────────────
 
 def detect_pdf_type(pdf_bytes: bytes) -> Literal["digital", "scanned"]:
@@ -145,7 +190,7 @@ def extract_text_with_vision_ocr(
             "Run: pip install google-cloud-vision"
         )
 
-    client = vision_client or vision.ImageAnnotatorClient()
+    client = vision_client or _build_vision_client()
 
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)

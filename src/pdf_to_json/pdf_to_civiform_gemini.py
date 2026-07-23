@@ -125,33 +125,64 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
         file_full (str):        The full path to the PDF file.
         model_name (str):       The name of the LLM model to use.
         client:                 The initialized Gemini client.
+                                May be None when extraction_mode == 'ocr-vision'.
         extraction_mode (str):  One of:
                                   'auto'          — detect PDF type automatically
-                                  'ocr-vision'    — always use Cloud Vision OCR
+                                  'ocr-vision'    — Cloud Vision OCR only, no Gemini
                                   'gemini-direct' — always use raw PDF bytes path
 
     Returns:
         dict with 'intermediary_json', 'civiform_json', and 'ocr_metadata' keys.
     Raises:
-        Exception: If LLM processing or post-processing fails.
+        Exception: If processing fails.
     """
     try:
-        # Extract the base filename without extension
         filename = os.path.basename(file_full)
         base_name, _ = os.path.splitext(filename)
-        base_name = base_name[:15]  # limit to 15 chars to avoid extremely long filenames
+        base_name = base_name[:15]
         logging.info(f"Processing file: {file_full} (extraction_mode={extraction_mode}) ...")
 
         filepath = Path(file_full)
         file_bytes = filepath.read_bytes()
 
+        # ── OCR-ONLY PATH: Cloud Vision only, no Gemini at all ───────────────────
+        if extraction_mode == 'ocr-vision':
+            from ocr_lib import extract_text_with_vision_ocr, detect_pdf_type
+            logging.info("OCR-only mode: running Cloud Vision OCR, skipping Gemini.")
+            ocr_text = extract_text_with_vision_ocr(file_bytes)
+            ocr_char_count = len(ocr_text)
+            ocr_metadata = {
+                "pdf_type": "scanned",
+                "ocr_used": True,
+                "model": "cloud-vision-only",
+                "ocr_char_count": ocr_char_count,
+            }
+            # Save the raw OCR text to the output directory
+            llm.save_response_to_file(
+                ocr_text, base_name, "ocr-raw-text", output_json_dir)
+            logging.info(
+                f"OCR complete: {ocr_char_count} chars extracted. "
+                "No Gemini call made."
+            )
+            # Return the OCR text as both outputs so the UI shows something useful.
+            # The user can copy the text and run through Gemini separately if desired.
+            return {
+                "intermediary_json": ocr_text,
+                "civiform_json": "",
+                "ocr_metadata": ocr_metadata,
+            }
+
+        # ── GEMINI PATH (auto or gemini-direct): Gemini client required ──────────
+        if client is None:
+            raise Exception(
+                "Gemini client is required for 'auto' and 'gemini-direct' modes. "
+                "Please provide a valid Gemini API key."
+            )
+
         # Translate UI extraction_mode into llm_lib flags
-        force_ocr = (extraction_mode == 'ocr-vision')
         bypass_ocr = (extraction_mode == 'gemini-direct')
 
         if bypass_ocr:
-            # Temporarily override detect_pdf_type to always return 'digital'
-            # so llm_lib takes the bytes path regardless of text layer
             import ocr_lib
             original_detect = ocr_lib.detect_pdf_type
             ocr_lib.detect_pdf_type = lambda _: 'digital'
@@ -159,7 +190,7 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
         try:
             structured_json, llm_error = llm.process_pdf_text_with_llm(
                 client, model_name, file_bytes, base_name, work_dir,
-                force_ocr=force_ocr
+                force_ocr=False
             )
         finally:
             if bypass_ocr:
@@ -168,7 +199,7 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
         if structured_json is None:
             raise Exception(f"LLM processing failed for file: {file_full}. Details: {llm_error}")
 
-        # Extract ocr_metadata before formatting (it's injected per-response dict)
+        # Extract ocr_metadata before formatting
         try:
             raw_list = json.loads(structured_json)
             ocr_metadata = None
@@ -176,7 +207,6 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
                 ocr_metadata = raw_list[0].pop('_extraction_metadata', None)
             elif isinstance(raw_list, dict):
                 ocr_metadata = raw_list.pop('_extraction_metadata', None)
-            # Re-serialize after stripping metadata so it doesn't pollute downstream
             structured_json = json.dumps(raw_list)
         except Exception:
             ocr_metadata = None
@@ -211,7 +241,7 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
         }
     except Exception as e:
         logging.error(f"Failed to process file {file_full}: {e}")
-        raise  # Re-raise the exception to be caught in the route
+        raise
 
 
 @app.route('/')
@@ -248,12 +278,17 @@ def upload_file():
         logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
         logging.info(f"Using model: {model_name}, extraction mode: {extraction_mode}")
 
-        client = llm.initialize_gemini_client(api_key=gemini_api_key)
-        if client is None:
-            error_message = "Failed to initialize Gemini client. Check API key configuration and logs."
-            logging.error(error_message)
-            debug_log = log_stream.getvalue()
-            return jsonify({"error": error_message, "debug_log": debug_log}), 500
+        # Only initialize Gemini if needed — OCR-only mode doesn't use it at all
+        client = None
+        if extraction_mode != 'ocr-vision':
+            client = llm.initialize_gemini_client(api_key=gemini_api_key)
+            if client is None:
+                error_message = "Failed to initialize Gemini client. Check API key configuration and logs."
+                logging.error(error_message)
+                debug_log = log_stream.getvalue()
+                return jsonify({"error": error_message, "debug_log": debug_log}), 500
+        else:
+            logging.info("OCR-only mode selected — skipping Gemini client initialization.")
 
         # Process the file
         processing_result = process_file(file_full, model_name, client, extraction_mode=extraction_mode)

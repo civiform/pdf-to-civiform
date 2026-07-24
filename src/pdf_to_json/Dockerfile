@@ -25,7 +25,13 @@ WORKDIR ${WORK_DIR}
 # Let's copy as root then chown later
 COPY python_dependencies.txt ${APP_DIR}/
 
-# Install dependencies
+# Install system dependencies: Tesseract OCR engine (no cloud credentials needed)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r ${APP_DIR}/python_dependencies.txt
 
 # Copy the application code into the app directory (relative to WORKDIR doesn't work here)

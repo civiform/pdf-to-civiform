@@ -1,16 +1,17 @@
 """
-ocr_lib.py — Google Cloud Vision OCR layer for pdf-to-civiform.
+ocr_lib.py — Tesseract OCR layer for pdf-to-civiform.
 
 Adds two capabilities on top of the existing PyMuPDF + Gemini pipeline:
   1. PDF type detection: determines whether a PDF has a selectable text layer
      ("digital") or is a flat/scanned image ("scanned").
-  2. Cloud Vision OCR: rasterises each page and runs DOCUMENT_TEXT_DETECTION
+  2. Tesseract OCR: rasterises each page and runs pytesseract
      for scanned PDFs, producing plain text that can be sent to Gemini.
 
-Setup:
-    pip install google-cloud-vision
-    gcloud auth application-default login        # or set GOOGLE_APPLICATION_CREDENTIALS
-    gcloud services enable vision.googleapis.com
+Setup (handled automatically in Docker via Dockerfile):
+    apt-get install tesseract-ocr
+    pip install pytesseract
+
+No cloud credentials required.
 """
 
 from __future__ import annotations
@@ -20,16 +21,17 @@ from typing import Literal
 
 import pymupdf  # PyMuPDF — already in python_dependencies.txt
 
-# google-cloud-vision is an optional new dependency
 try:
-    from google.cloud import vision  # type: ignore
-    _VISION_AVAILABLE = True
+    import pytesseract  # type: ignore
+    from PIL import Image  # type: ignore
+    import io
+    _TESSERACT_AVAILABLE = True
 except ImportError:
-    _VISION_AVAILABLE = False
+    _TESSERACT_AVAILABLE = False
     logging.warning(
-        "google-cloud-vision not installed. "
-        "Scanned PDF support unavailable. "
-        "Run: pip install google-cloud-vision"
+        "pytesseract or Pillow not installed. "
+        "Scanned PDF OCR unavailable. "
+        "Run: pip install pytesseract pillow"
     )
 
 # ── Tuneable constants ─────────────────────────────────────────────────────────
@@ -38,13 +40,14 @@ except ImportError:
 # 50 is conservative — even sparse government forms typically exceed this.
 DIGITAL_TEXT_THRESHOLD_CHARS_PER_PAGE = 50
 
-# Cloud Vision is billed per page; cap to avoid runaway costs.
+# Cap pages to avoid very slow OCR on large documents.
 MAX_OCR_PAGES = 20
 
-# DPI for page rasterisation. 200 dpi gives Vision API enough detail without
-# generating excessively large payloads.
+# DPI for page rasterisation. 200 dpi gives Tesseract enough detail.
 OCR_RENDER_DPI = 200
 
+# Tesseract config: OEM 3 = best engine, PSM 3 = full auto page segmentation.
+TESSERACT_CONFIG = "--oem 3 --psm 3"
 
 # ── Vision client factory ──────────────────────────────────────────────────────
 
@@ -163,34 +166,31 @@ def _render_page_png(pdf_bytes: bytes, page_index: int, dpi: int = OCR_RENDER_DP
 def extract_text_with_vision_ocr(
     pdf_bytes: bytes,
     max_pages: int = MAX_OCR_PAGES,
-    vision_client=None,
+    vision_client=None,  # kept for API compatibility, unused by Tesseract
 ) -> str:
     """
-    OCR a scanned PDF using Google Cloud Vision DOCUMENT_TEXT_DETECTION.
+    Extract text from a scanned PDF using Tesseract OCR.
 
-    Each page is rendered to PNG and sent to Vision individually.
-    Page results are concatenated with page-boundary markers so the Gemini
-    prompt can still reason about form structure.
+    Each page is rasterised with PyMuPDF then passed to pytesseract.
+    No cloud credentials required.
 
     Args:
-        pdf_bytes:      Raw PDF bytes.
-        max_pages:      Maximum pages to OCR (cost guard).
-        vision_client:  Optional pre-built ImageAnnotatorClient (useful for
-                        testing with a mock client).
+        pdf_bytes:    Raw PDF bytes.
+        max_pages:    Maximum pages to OCR.
+        vision_client: Ignored (kept for backwards compatibility).
 
     Returns:
         Concatenated OCR text across all processed pages.
 
     Raises:
-        RuntimeError: If google-cloud-vision is not installed.
+        RuntimeError: If pytesseract/Tesseract is not installed.
     """
-    if not _VISION_AVAILABLE:
+    if not _TESSERACT_AVAILABLE:
         raise RuntimeError(
-            "google-cloud-vision is not installed. "
-            "Run: pip install google-cloud-vision"
+            "pytesseract or Pillow is not installed. "
+            "In Docker this is handled by the Dockerfile. "
+            "Locally: pip install pytesseract pillow  and  apt install tesseract-ocr"
         )
-
-    client = vision_client or _build_vision_client()
 
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
@@ -207,26 +207,14 @@ def extract_text_with_vision_ocr(
         logging.info(f"OCR page {idx + 1}/{pages_to_ocr} ...")
         png_bytes = _render_page_png(pdf_bytes, idx)
 
-        image = vision.Image(content=png_bytes)
-        response = client.document_text_detection(image=image)
+        pil_image = Image.open(io.BytesIO(png_bytes))
+        page_text = pytesseract.image_to_string(pil_image, config=TESSERACT_CONFIG)
 
-        if response.error.message:
-            logging.error(f"Vision API error (page {idx + 1}): {response.error.message}")
-            pages_text.append(f"--- Page {idx + 1} [OCR ERROR] ---\n")
-            continue
-
-        page_text = (
-            response.full_text_annotation.text
-            if response.full_text_annotation
-            else ""
-        )
         pages_text.append(f"--- Page {idx + 1} ---\n{page_text}")
         logging.info(f"  Page {idx + 1}: {len(page_text)} chars extracted.")
 
-    full_text = "\n".join(pages_text)
-    logging.info(
-        f"Cloud Vision OCR complete: {len(full_text)} chars from {pages_to_ocr} pages."
-    )
+    full_text = "\n\n".join(pages_text)
+    logging.info(f"Tesseract OCR complete: {len(full_text)} chars from {pages_to_ocr} pages.")
     return full_text
 
 
@@ -243,7 +231,7 @@ def extract_text_from_pdf(
 
     Args:
         pdf_bytes:      Raw PDF bytes.
-        force_ocr:      Always use Cloud Vision OCR, skip type detection.
+        force_ocr:      Always use Tesseract OCR, skip type detection.
         max_pages:      Max pages to process.
         vision_client:  Optional pre-built Vision client.
 

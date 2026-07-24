@@ -313,7 +313,7 @@
           <input type="radio" name="extractionMode" value="auto" checked>
           <span>
             <strong>Auto-detect</strong>
-            <small>Detects PDF type automatically — uses Gemini direct for digital PDFs, Cloud Vision OCR for scanned/flat PDFs</small>
+            <small>Detects PDF type automatically — uses Gemini direct for digital PDFs, Tesseract OCR for scanned/flat PDFs</small>
           </span>
         </label>
         <label class="radio-option">
@@ -326,8 +326,8 @@
         <label class="radio-option">
           <input type="radio" name="extractionMode" value="ocr-vision">
           <span>
-            <strong>Force Cloud Vision OCR</strong>
-            <small>Always run Google Cloud Vision OCR first (best for scanned/image PDFs)</small>
+            <strong>Force Tesseract OCR</strong>
+            <small>Always rasterise pages and run Tesseract OCR (best for scanned/image PDFs, no cloud credentials needed)</small>
           </span>
         </label>
       </div>

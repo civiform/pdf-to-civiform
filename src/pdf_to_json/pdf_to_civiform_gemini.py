@@ -145,16 +145,17 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
         filepath = Path(file_full)
         file_bytes = filepath.read_bytes()
 
-        # ── OCR-ONLY PATH: Cloud Vision only, no Gemini at all ───────────────────
+        # ── OCR-ONLY PATH: Tesseract OCR + heuristic JSON, no Gemini ────────────
         if extraction_mode == 'ocr-vision':
             from ocr_lib import extract_text_with_vision_ocr, detect_pdf_type
-            logging.info("OCR-only mode: running Cloud Vision OCR, skipping Gemini.")
+            from ocr_text_to_json import ocr_text_to_intermediary_json
+            logging.info("OCR-only mode: running Tesseract OCR + heuristic parser (no Gemini).")
             ocr_text = extract_text_with_vision_ocr(file_bytes)
             ocr_char_count = len(ocr_text)
             ocr_metadata = {
                 "pdf_type": "scanned",
                 "ocr_used": True,
-                "model": "cloud-vision-only",
+                "model": "tesseract-ocr-heuristic",
                 "ocr_char_count": ocr_char_count,
             }
             # Save the raw OCR text to the output directory
@@ -162,13 +163,36 @@ def process_file(file_full, model_name, client, extraction_mode='auto'):
                 ocr_text, base_name, "ocr-raw-text", output_json_dir)
             logging.info(
                 f"OCR complete: {ocr_char_count} chars extracted. "
-                "No Gemini call made."
+                "Running heuristic field parser..."
             )
-            # Return the OCR text as both outputs so the UI shows something useful.
-            # The user can copy the text and run through Gemini separately if desired.
+
+            # Convert OCR text to intermediary JSON using rule-based parser
+            intermediary_data = ocr_text_to_intermediary_json(
+                ocr_text, form_title=base_name)
+            intermediary_json_str = json.dumps(intermediary_data, indent=2)
+            formated_intermediary = format_json_single_line_fields(
+                intermediary_json_str)
+            llm.save_response_to_file(
+                formated_intermediary, base_name,
+                "ocr-heuristic-intermediary", output_json_dir)
+
+            # Convert to CiviForm JSON
+            civiform_json_str = ""
+            try:
+                civiform_json_str = convert_to_civiform_json(
+                    intermediary_data[0])
+                llm.save_response_to_file(
+                    civiform_json_str, base_name,
+                    "civiform-ocr-heuristic", output_json_dir)
+                logging.info("Heuristic CiviForm JSON conversion complete.")
+            except Exception as e:
+                logging.warning(
+                    f"CiviForm JSON conversion failed (heuristic data "
+                    f"may need review): {e}")
+
             return {
-                "intermediary_json": ocr_text,
-                "civiform_json": "",
+                "intermediary_json": formated_intermediary,
+                "civiform_json": civiform_json_str,
                 "ocr_metadata": ocr_metadata,
             }
 

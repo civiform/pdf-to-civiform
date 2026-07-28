@@ -8,6 +8,9 @@ import pymupdf
 import re
 import traceback
 
+# OCR layer for scanned / flat PDFs
+from ocr_lib import extract_text_from_pdf, detect_pdf_type
+
 PAGE_LIMIT=5
 
 def initialize_gemini_client(
@@ -88,115 +91,189 @@ def fix_malformed_json(json_str, client, model_name):
             print("Failed to auto-fix JSON. Manual review needed.")
             return None
 
-def process_pdf_text_with_llm(client, model_name, file, base_name, work_dir):
-    """Sends extracted PDF text to Gemini and asks it to format the content into structured JSON."""
+def process_pdf_text_with_llm(
+    client, model_name, file, base_name, work_dir,
+    force_ocr=False, vision_client=None
+):
+    """
+    Sends PDF content to Gemini and asks it to format the content into
+    structured JSON.
 
-    prompt = LLMPrompts.pdf_to_json_prompt()
-    logging.info(f"LLM processing input txt extracted from PDF...")
+    For DIGITAL PDFs (selectable text layer), the original multipart bytes
+    path is used — the raw PDF is sent directly to Gemini.
+
+    For SCANNED / FLAT PDFs (no text layer), Google Cloud Vision OCR is run
+    first to extract text, which is then sent to Gemini as a text prompt.
+
+    Args:
+        client:         Initialized genai.Client.
+        model_name:     Gemini model name.
+        file:           Raw PDF bytes.
+        base_name:      Short filename for output files.
+        work_dir:       Base output directory.
+        force_ocr:      If True, always run Cloud Vision OCR regardless of
+                        PDF type detection. Useful for testing.
+        vision_client:  Optional pre-built Vision ImageAnnotatorClient.
+
+    Returns:
+        (full_response_str, error_str) — error_str is None on success.
+    """
+    logging.info(f"LLM processing input extracted from PDF...")
 
     try:
-        logging.debug(f"Sending PDF to LLM...")
-        page_count = get_pdf_page_count(file)
-        logging.info(f"Page count {page_count}")
-        responses = []
-
         if not model_name.startswith("models/"):
             api_model_name = f"models/{model_name}"
         else:
             api_model_name = model_name
 
-        input_file = types.Part.from_bytes(data=file, mime_type="application/pdf")
-        response = client.models.generate_content(
-            model=api_model_name,
-            contents=[input_file, prompt]
-        )
+        # ── Step 1: Detect PDF type and extract text if needed ─────────────────
+        pdf_type = "scanned" if force_ocr else detect_pdf_type(file)
+        ocr_used = False
+        ocr_char_count = 0
 
-        # Add robust check based on actual library behavior
-        if hasattr(response, 'text'):
-            response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
-        elif (
-            hasattr(response, 'candidates') and response.candidates and
-            hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
-        ):
-            # Fallback to candidate structure if .text isn't available (more typical)
-            response_text = (
-                response.candidates[0].content.parts[0].text
-                .strip("`")
-                .lstrip("json")
-                .strip()
+        if pdf_type == "scanned":
+            # SCANNED PATH: run Cloud Vision OCR, then send text to Gemini
+            logging.info("Using Cloud Vision OCR path for scanned PDF.")
+            try:
+                extracted_text, _ = extract_text_from_pdf(
+                    file,
+                    force_ocr=True,
+                    vision_client=vision_client,
+                )
+                ocr_used = True
+                ocr_char_count = len(extracted_text)
+            except RuntimeError as ocr_err:
+                logging.error(f"Cloud Vision OCR unavailable: {ocr_err}")
+                logging.warning("Falling back to direct PDF bytes path (may fail for scanned PDFs).")
+                pdf_type = "digital"  # fall back to bytes path
+
+        responses = []
+        page_count = get_pdf_page_count(file)
+        logging.info(f"Page count: {page_count}")
+
+        if pdf_type == "scanned" and ocr_used:
+            # ── SCANNED: send extracted text to Gemini as a text prompt ────────
+            prompt = LLMPrompts.pdf_to_json_prompt_from_text(
+                extracted_text, pdf_type="scanned"
             )
+            logging.info(f"Sending OCR text ({ocr_char_count} chars) to Gemini...")
+            response = client.models.generate_content(
+                model=api_model_name,
+                contents=[prompt]
+            )
+            response_text = _extract_response_text(response)
+            if response_text is None:
+                return None, "Failed to extract text from LLM response (scanned path)"
+
+            try:
+                json_response = json.loads(response_text.strip())
+                save_response_to_file(
+                    response_text.strip(), base_name,
+                    f"pdf-extract-ocr-{model_name}", work_dir
+                )
+                responses.append(json_response)
+            except json.JSONDecodeError:
+                logging.warning("Malformed JSON from scanned path; attempting repair...")
+                fixed = fix_malformed_json(response_text, client, model_name)
+                if fixed:
+                    responses.append(json.loads(fixed))
+                else:
+                    return None, "Gemini returned malformed JSON that could not be repaired."
+
         else:
-            # Cannot extract text, log the response structure for debugging
-            logging.error(f"Could not extract text from LLM response. Response object: {response}")
-            return None, "Failed to extract text from LLM response"
+            # ── DIGITAL: original multipart PDF bytes path (unchanged) ─────────
+            prompt = LLMPrompts.pdf_to_json_prompt()
+            logging.debug("Sending PDF bytes directly to Gemini (digital path)...")
 
-        try:
-          json_response = json.loads(response_text.strip())
-          save_response_to_file(response_text.strip(),
-                                base_name,
-                                f"pdf-extract-{model_name}",
-                                work_dir)
-          responses.append(json_response)
-        except json.JSONDecodeError:
-          logging.warning("Malformed json, needs processing in batches..")
+            input_file = types.Part.from_bytes(data=file, mime_type="application/pdf")
+            response = client.models.generate_content(
+                model=api_model_name,
+                contents=[input_file, prompt]
+            )
+            response_text = _extract_response_text(response)
+            if response_text is None:
+                return None, "Failed to extract text from LLM response (digital path)"
 
-          for start in range(0, page_count, PAGE_LIMIT):
-              end = min(start + PAGE_LIMIT, page_count)
-              chunk_bytes = extract_pages_as_bytes(file, start, end)
+            try:
+                json_response = json.loads(response_text.strip())
+                save_response_to_file(
+                    response_text.strip(), base_name,
+                    f"pdf-extract-{model_name}", work_dir
+                )
+                responses.append(json_response)
+            except json.JSONDecodeError:
+                logging.warning("Malformed JSON from digital path; processing in batches...")
 
-              input_file = types.Part.from_bytes(
-                  data=chunk_bytes, mime_type="application/pdf"
-              )
+                for start in range(0, page_count, PAGE_LIMIT):
+                    end = min(start + PAGE_LIMIT, page_count)
+                    chunk_bytes = extract_pages_as_bytes(file, start, end)
+                    chunk_input = types.Part.from_bytes(
+                        data=chunk_bytes, mime_type="application/pdf"
+                    )
+                    response = client.models.generate_content(
+                        model=api_model_name,
+                        contents=[chunk_input, prompt],
+                    )
+                    response_text = _extract_response_text(response)
+                    if response_text is None:
+                        logging.error(f"LLM response failed for pages {start}-{end}; skipping.")
+                        continue
 
-              response = client.models.generate_content(
-                  model=api_model_name,
-                  contents=[input_file, prompt],
-              )
+                    fixed_text_response = fix_malformed_json(response_text, client, model_name)
+                    if fixed_text_response is not None:
+                        try:
+                            fixed_json = json.loads(fixed_text_response.strip())
+                            save_response_to_file(
+                                fixed_text_response.strip(), base_name,
+                                f"pdf-extract-{start}-{model_name}", work_dir,
+                            )
+                            responses.append(fixed_json)
+                        except json.JSONDecodeError:
+                            logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+                    else:
+                        logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
 
-              # Add robust check based on actual library behavior
-              if hasattr(response, 'text'):
-                  response_text = response.text.strip("`").lstrip("json")  # Remove ``` and "json" if present
-              elif (
-                  hasattr(response, 'candidates') and response.candidates and
-                  hasattr(response.candidates[0], 'content') and response.candidates[0].content.parts
-              ):
-                  # Fallback to candidate structure if .text isn't available (more typical)
-                  response_text = (
-                      response.candidates[0].content.parts[0].text
-                      .strip("`")
-                      .lstrip("json")
-                      .strip()
-                  )
-              else:
-                  # Cannot extract text, log the response structure for debugging
-                  logging.error(f"Could not extract text from LLM response. Response object: {response}")
-                  return None, "Failed to extract text from LLM response"
-
-              fixed_text_response = fix_malformed_json(response_text, client, model_name)
-              if fixed_text_response is not None:
-                  try:
-                      fixed_json = json.loads(fixed_text_response.strip())
-                      save_response_to_file(
-                          fixed_text_response.strip(),
-                          base_name,
-                          f"pdf-extract-{start}-{model_name}",
-                          work_dir,
-                      )
-                      responses.append(fixed_json)
-                  except json.JSONDecodeError:
-                      logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
-              else:
-                  logging.warning(f"Skipping malformed JSON for pages {start}-{end}")
+        # ── Step 2: Annotate with extraction metadata ──────────────────────────
+        # Inject a top-level _extraction_metadata block so the UI can display
+        # badges like "Detected: Scanned PDF — Cloud Vision OCR used".
+        if responses:
+            for resp in responses:
+                if isinstance(resp, dict):
+                    resp["_extraction_metadata"] = {
+                        "pdf_type": pdf_type,
+                        "ocr_used": ocr_used,
+                        "model": model_name,
+                        "ocr_char_count": ocr_char_count,
+                    }
 
         full_response = json.dumps(responses, ensure_ascii=False, indent=4)
         save_response_to_file(full_response, base_name, f"pdf-extract-{model_name}", work_dir)
-        return full_response, None # Return response and None for error
+        return full_response, None
 
     except Exception as e:
         error_details = f"Error in process_pdf_text_with_llm (model: {api_model_name}): {type(e).__name__} - {e}"
         logging.error(error_details)
-        logging.error(traceback.format_exc()) # Log full traceback
-        return None, error_details # Return None for response and the error details
+        logging.error(traceback.format_exc())
+        return None, error_details
+
+
+def _extract_response_text(response) -> str | None:
+    """Robustly pull the text string out of a genai response object."""
+    if hasattr(response, 'text'):
+        return response.text.strip("`").lstrip("json")
+    elif (
+        hasattr(response, 'candidates') and response.candidates and
+        hasattr(response.candidates[0], 'content') and
+        response.candidates[0].content.parts
+    ):
+        return (
+            response.candidates[0].content.parts[0].text
+            .strip("`")
+            .lstrip("json")
+            .strip()
+        )
+    logging.error(f"Could not extract text from LLM response. Object: {response}")
+    return None
 
 def save_response_to_file(response, base_name, output_suffix, output_directory):
     """

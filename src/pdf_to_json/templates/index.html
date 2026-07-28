@@ -24,6 +24,7 @@
         )
         formData.append('logLevel', getLogLevel())
         formData.append('geminiApiKey', document.getElementById('geminiApiKeyInput').value || '')
+        formData.append('extractionMode', getExtractionMode())
 
         const intermediaryDetails = document.getElementById('intermediary-details')
         const intermediaryOutputTextArea = document.getElementById('intermediaryOutput')
@@ -84,6 +85,20 @@
           }
           civiformOutputTextArea.value = civiformJsonString;
 
+          // Show PDF type detection badge
+          const badge = document.getElementById('pdf-type-badge');
+          if (badge && responseData.ocr_metadata) {
+            const meta = responseData.ocr_metadata;
+            const icon = meta.ocr_used ? '🔍' : '📄';
+            const label = meta.ocr_used
+              ? `Scanned PDF detected — Cloud Vision OCR used (${meta.ocr_char_count.toLocaleString()} chars extracted)`
+              : `Digital PDF detected — native text extraction`;
+            badge.textContent = icon + ' ' + label;
+            badge.className = 'pdf-type-badge ' + (meta.ocr_used ? 'badge-scanned' : 'badge-digital');
+            badge.style.display = 'inline-block';
+          } else if (badge) {
+            badge.style.display = 'none';
+          }
 
         } catch (error) {
             const failMsg = `Request failed: ${error}`;
@@ -170,6 +185,7 @@
         );
         formData.append('logLevel', getLogLevel());
         formData.append('geminiApiKey', document.getElementById('geminiApiKeyInput').value || '')
+        formData.append('extractionMode', getExtractionMode())
 
         formData.append(
           'directoryPath',
@@ -247,8 +263,12 @@
 
       function getLogLevel() {
         const logLevelSelect = document.getElementById('logLevelSelect')
-        const selectedLogLevel = logLevelSelect.value
-        return selectedLogLevel
+        return logLevelSelect.value
+      }
+
+      function getExtractionMode() {
+        const selected = document.querySelector('input[name="extractionMode"]:checked')
+        return selected ? selected.value : 'auto'
       }
     </script>
   </head>
@@ -286,8 +306,36 @@
     <form onsubmit="uploadFile(event)" class="form-group">
       <label for="fileInput">Upload a PDF file:</label>
       <input type="file" id="pdfFile" accept="application/pdf" required />
+
+      <div class="extraction-mode-group">
+        <label class="extraction-mode-label">Extraction mode:</label>
+        <label class="radio-option">
+          <input type="radio" name="extractionMode" value="auto" checked>
+          <span>
+            <strong>Auto-detect</strong>
+            <small>Detects PDF type automatically — uses Gemini direct for digital PDFs, Tesseract OCR for scanned/flat PDFs</small>
+          </span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="extractionMode" value="gemini-direct">
+          <span>
+            <strong>Gemini direct</strong>
+            <small>Always send raw PDF bytes to Gemini (best for fillable/digital PDFs)</small>
+          </span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="extractionMode" value="ocr-vision">
+          <span>
+            <strong>Force Tesseract OCR</strong>
+            <small>Always rasterise pages and run Tesseract OCR (best for scanned/image PDFs, no cloud credentials needed)</small>
+          </span>
+        </label>
+      </div>
+
       <button type="submit">Convert a single PDF file</button>
     </form>
+
+    <div id="pdf-type-badge" class="pdf-type-badge" style="display:none"></div>
 
     <div class="output-container" id="intermediary-output-container">
       <details id="intermediary-details">
